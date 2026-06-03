@@ -1,0 +1,38 @@
+{
+  "name": "ai-resume-analyzer",
+  "version": "1.0.0",
+  "description": "Dashboard for scoring resumes against job descriptions and generating ATS-friendly resume updates.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MURALIKRISHNABEZAWADA/AI-RESUME-ANALYZER.git"
+  },
+  "keywords": [
+    "resume",
+    "ats",
+    "job-description",
+    "dashboard"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/MURALIKRISHNABEZAWADA/AI-RESUME-ANALYZER/issues"
+  },
+  "homepage": "https://github.com/MURALIKRISHNABEZAWADA/AI-RESUME-ANALYZER#readme",
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.16",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  },
+  "type": "module"
+}
