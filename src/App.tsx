@@ -1,19 +1,40 @@
-import { ChangeEvent, useMemo, useState } from 'react';
-import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import {
+  ApplicantProfile,
+  Job,
+  applyToJob,
+  generateResume,
+  listJobs,
+  scoreJob,
+  scrapeJobs,
+} from './jobApi';
 
-const sectionLabels = {
-  summary: 'Summary',
-  experience: 'Experience',
-  skills: 'Skills',
-  education: 'Education',
-  projects: 'Projects',
-  certifications: 'Certifications',
-};
+const defaultResume = `Taylor Rivera
+taylor.rivera@email.com | 555-0142 | linkedin.com/in/taylorrivera
 
-const severityLabel = {
-  major: 'High priority',
-  moderate: 'Medium priority',
-  minor: 'Low priority',
+Professional Summary
+Data Scientist with 5+ years of experience building machine learning models, experimentation frameworks, and executive dashboards.
+
+Skills
+Python, SQL, machine learning, statistics, experimentation, forecasting, Tableau, AWS, stakeholder communication
+
+Professional Experience
+Senior Data Scientist | Northstar Analytics | 2021 - Present
+- Built churn prediction models that improved retention outreach precision by 28%.
+- Designed A/B testing framework used by product teams across 12 launches.
+- Partnered with engineering to productionize Python feature pipelines and model monitoring.
+
+Education
+M.S. Applied Statistics | State University`;
+
+const defaultProfile: ApplicantProfile = {
+  first_name: 'Taylor',
+  last_name: 'Rivera',
+  email: 'taylor.rivera@email.com',
+  phone: '555-0142',
+  linkedin_url: 'https://linkedin.com/in/taylorrivera',
+  portfolio_url: 'https://github.com/taylorrivera',
+  location: 'Remote',
 };
 
 function MetricCard({ label, value, helper }: { label: string; value: string; helper: string }) {
@@ -26,137 +47,162 @@ function MetricCard({ label, value, helper }: { label: string; value: string; he
   );
 }
 
-function KeywordList({ title, keywords, tone }: { title: string; keywords: string[]; tone: 'good' | 'warning' }) {
-  return (
-    <div className="keyword-panel">
-      <div className="panel-heading">
-        <h3>{title}</h3>
-        <span>{keywords.length}</span>
-      </div>
-      <div className="keyword-cloud">
-        {keywords.length ? (
-          keywords.map((keyword) => (
-            <span className={`chip ${tone}`} key={keyword}>
-              {keyword}
-            </span>
-          ))
-        ) : (
-          <p className="muted">No keywords to show yet.</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <section className="empty-state">
-      <div>
-        <p className="eyebrow">Ready when you are</p>
-        <h2>Paste a resume and job description to generate your match score.</h2>
-        <p>
-          The dashboard compares JD keywords, ATS formatting, resume structure, and measurable impact. The rewrite
-          agent then creates an ATS-friendly draft you can refine before applying.
-        </p>
-      </div>
-    </section>
-  );
+function PortalBadge({ portal }: { portal: Job['portal'] }) {
+  return <span className={`portal-badge ${portal}`}>{portal}</span>;
 }
 
 function App() {
-  const [resume, setResume] = useState('');
-  const [jobDescription, setJobDescription] = useState('');
-  const [copyStatus, setCopyStatus] = useState('Copy resume');
-  const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
-  const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
+  const [resumeText, setResumeText] = useState(defaultResume);
+  const [searchTerms, setSearchTerms] = useState('data scientist');
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<ApplicantProfile>(defaultProfile);
+  const [status, setStatus] = useState('Ready to scrape remote Data Scientist jobs posted in the last 72 hours.');
+  const [isBusy, setIsBusy] = useState(false);
 
-  const loadSample = () => {
-    setResume(sampleResume);
-    setJobDescription(sampleJobDescription);
-    setCopyStatus('Copy resume');
+  const selectedJob = useMemo(() => jobs.find((job) => job.id === selectedJobId) ?? jobs[0], [jobs, selectedJobId]);
+  const scoredJobs = jobs.filter((job) => job.match_score !== null);
+  const avgScore = scoredJobs.length
+    ? Math.round(scoredJobs.reduce((sum, job) => sum + (job.match_score ?? 0), 0) / scoredJobs.length)
+    : 0;
+  const supportedPortals = jobs.filter((job) => ['greenhouse', 'lever', 'workday'].includes(job.portal)).length;
+
+  useEffect(() => {
+    listJobs()
+      .then((loadedJobs) => {
+        setJobs(loadedJobs);
+        setSelectedJobId(loadedJobs[0]?.id ?? null);
+      })
+      .catch(() => {
+        setStatus('Backend not connected yet. Start FastAPI on port 8000, then scrape jobs.');
+      });
+  }, []);
+
+  const refreshJob = (jobId: string, patch: Partial<Job>) => {
+    setJobs((currentJobs) => currentJobs.map((job) => (job.id === jobId ? { ...job, ...patch } : job)));
   };
 
-  const resetDashboard = () => {
-    setResume('');
-    setJobDescription('');
-    setCopyStatus('Copy resume');
+  const runScrape = async (event: FormEvent) => {
+    event.preventDefault();
+    setIsBusy(true);
+    setStatus('Scraping remote job feeds and storing fresh jobs...');
+    try {
+      const terms = searchTerms
+        .split(',')
+        .map((term) => term.trim())
+        .filter(Boolean);
+      const response = await scrapeJobs(resumeText, terms.length ? terms : ['data scientist']);
+      setJobs(response.jobs);
+      setSelectedJobId(response.jobs[0]?.id ?? null);
+      setStatus(`Stored ${response.stored} fresh remote jobs from the last 72 hours.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Scrape failed.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const runScore = async (job: Job) => {
+    setIsBusy(true);
+    setStatus(`Scoring ${job.title} at ${job.company}...`);
+    try {
+      const result = await scoreJob(job.id, resumeText);
+      refreshJob(job.id, {
+        match_score: result.match_score,
+        score_reason: result.reason,
+        missing_keywords: result.missing_keywords,
+      });
+      setStatus(`Score updated: ${result.match_score}/100.`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Scoring failed.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const runGenerateResume = async (job: Job) => {
+    setIsBusy(true);
+    setStatus(`Generating ATS resume for ${job.company}...`);
+    try {
+      const result = await generateResume(job.id, resumeText);
+      refreshJob(job.id, { generated_resume: result.generated_resume });
+      setSelectedJobId(job.id);
+      setStatus('ATS optimized resume saved on the job.');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Resume generation failed.');
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const runApplyDryRun = async (job: Job) => {
+    setIsBusy(true);
+    setStatus(`Checking ${job.portal} application automation for ${job.company}...`);
+    try {
+      const result = await applyToJob(job.id, profile);
+      refreshJob(job.id, { apply_status: result.status, apply_notes: result.notes });
+      setStatus(`${result.portal} status: ${result.notes}`);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Application dry run failed.');
+    } finally {
+      setIsBusy(false);
+    }
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
+    if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      setResume(String(reader.result ?? ''));
-      setCopyStatus('Copy resume');
-    };
+    reader.onload = () => setResumeText(String(reader.result ?? ''));
     reader.readAsText(file);
   };
 
-  const copyRewrite = async () => {
-    if (!analysis.rewrittenResume) {
-      return;
-    }
-
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
-    setCopyStatus('Copied');
-    window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
-  };
-
-  const downloadRewrite = () => {
-    if (!analysis.rewrittenResume) {
-      return;
-    }
-
-    const blob = new Blob([analysis.rewrittenResume], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'ats-friendly-resume.txt';
-    link.click();
-    URL.revokeObjectURL(url);
+  const updateProfile = (field: keyof ApplicantProfile, value: string) => {
+    setProfile((currentProfile) => ({ ...currentProfile, [field]: value }));
   };
 
   return (
     <main className="app-shell">
       <section className="hero-section">
         <div className="hero-copy">
-          <p className="eyebrow">AI Resume Analyzer</p>
-          <h1>Score your resume against any job description.</h1>
+          <p className="eyebrow">Remote Data Scientist Job Agent</p>
+          <h1>Scrape, score, tailor, and apply from one dashboard.</h1>
           <p>
-            Upload or paste your resume, add the JD, and get an instant match score, ATS readiness report, missing
-            keywords, and a clean resume rewrite draft tailored to the role.
+            Pull fresh remote Data Scientist postings, persist them in PostgreSQL, score each role with OpenAI, generate
+            ATS-ready resumes, and dry-run Greenhouse, Lever, and Workday application automation.
           </p>
-          <div className="hero-actions">
-            <button className="primary-button" onClick={loadSample} type="button">
-              Try sample analysis
+          <form className="search-row" onSubmit={runScrape}>
+            <input
+              aria-label="Search terms"
+              onChange={(event) => setSearchTerms(event.target.value)}
+              placeholder="data scientist, machine learning"
+              value={searchTerms}
+            />
+            <button className="primary-button" disabled={isBusy} type="submit">
+              {isBusy ? 'Working...' : 'Scrape fresh jobs'}
             </button>
-            <button className="ghost-button" onClick={resetDashboard} type="button">
-              Clear dashboard
-            </button>
-          </div>
+          </form>
         </div>
-        <div className="score-hero-card" aria-label="Resume score preview">
-          <div className="score-ring" style={{ '--score': `${analysis.score * 3.6}deg` } as React.CSSProperties}>
-            <span>{hasAnalysis ? analysis.score : 0}</span>
-          </div>
-          <div>
-            <span className="score-label">Resume match</span>
-            <strong>{hasAnalysis ? analysis.grade : 'N/A'}</strong>
-            <p>{analysis.summary}</p>
-          </div>
+        <div className="status-card">
+          <span>Pipeline status</span>
+          <strong>{jobs.length} jobs</strong>
+          <p>{status}</p>
         </div>
       </section>
 
-      <section className="input-grid" aria-label="Resume and job description inputs">
-        <article className="input-card">
+      <section className="metrics-grid" aria-label="Pipeline metrics">
+        <MetricCard label="Fresh jobs" value={`${jobs.length}`} helper="Posted within 72 hours" />
+        <MetricCard label="Average match" value={`${avgScore}/100`} helper="OpenAI or local scoring" />
+        <MetricCard label="Scored jobs" value={`${scoredJobs.length}`} helper="Resume match completed" />
+        <MetricCard label="Auto portals" value={`${supportedPortals}`} helper="Greenhouse, Lever, Workday" />
+      </section>
+
+      <section className="workspace-grid">
+        <article className="control-card">
           <div className="card-title-row">
             <div>
-              <p className="eyebrow">Step 1</p>
-              <h2>Your resume</h2>
+              <p className="eyebrow">Resume source</p>
+              <h2>Candidate resume</h2>
             </div>
             <label className="upload-button">
               Upload .txt
@@ -165,130 +211,137 @@ function App() {
           </div>
           <textarea
             aria-label="Resume text"
-            onChange={(event) => setResume(event.target.value)}
-            placeholder="Paste your resume text here..."
-            value={resume}
+            onChange={(event) => setResumeText(event.target.value)}
+            value={resumeText}
           />
         </article>
 
-        <article className="input-card">
-          <div className="card-title-row">
-            <div>
-              <p className="eyebrow">Step 2</p>
-              <h2>Target job description</h2>
-            </div>
+        <article className="control-card">
+          <p className="eyebrow">Application profile</p>
+          <h2>Dry-run applicant details</h2>
+          <div className="profile-grid">
+            {(
+              [
+                ['first_name', 'First name'],
+                ['last_name', 'Last name'],
+                ['email', 'Email'],
+                ['phone', 'Phone'],
+                ['linkedin_url', 'LinkedIn'],
+                ['portfolio_url', 'Portfolio'],
+                ['location', 'Location'],
+              ] as const
+            ).map(([field, label]) => (
+              <label key={field}>
+                {label}
+                <input
+                  onChange={(event) => updateProfile(field, event.target.value)}
+                  value={String(profile[field] ?? '')}
+                />
+              </label>
+            ))}
           </div>
-          <textarea
-            aria-label="Job description text"
-            onChange={(event) => setJobDescription(event.target.value)}
-            placeholder="Paste the full job description here..."
-            value={jobDescription}
-          />
         </article>
       </section>
 
-      {!hasAnalysis ? (
-        <EmptyState />
-      ) : (
-        <>
-          <section className="metrics-grid" aria-label="Resume analysis metrics">
-            <MetricCard label="Overall score" value={`${analysis.score}/100`} helper="Weighted resume-to-JD match" />
-            <MetricCard label="Keyword coverage" value={`${analysis.keywordCoverage}%`} helper="JD terms found in resume" />
-            <MetricCard label="ATS readiness" value={`${analysis.atsReadiness}%`} helper="Formatting and parser safety" />
-            <MetricCard label="Missing keywords" value={`${analysis.missingKeywords.length}`} helper="Terms to add truthfully" />
-          </section>
+      <section className="dashboard-grid">
+        <article className="jobs-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Fresh remote jobs</p>
+              <h2>Scraped roles</h2>
+            </div>
+            <span className="status-pill">Last 72 hours</span>
+          </div>
+          <div className="job-list">
+            {jobs.length ? (
+              jobs.map((job) => (
+                <button
+                  className={`job-card ${selectedJob?.id === job.id ? 'selected' : ''}`}
+                  key={job.id}
+                  onClick={() => setSelectedJobId(job.id)}
+                  type="button"
+                >
+                  <div>
+                    <strong>{job.title}</strong>
+                    <span>{job.company}</span>
+                  </div>
+                  <PortalBadge portal={job.portal} />
+                  <p>{job.location} | {new Date(job.posted_at).toLocaleString()}</p>
+                  <small>{job.match_score === null ? 'Not scored' : `${job.match_score}/100 match`}</small>
+                </button>
+              ))
+            ) : (
+              <p className="muted">No jobs loaded. Start the backend, then scrape fresh roles.</p>
+            )}
+          </div>
+        </article>
 
-          <section className="dashboard-grid">
-            <article className="analysis-card wide-card">
+        <article className="detail-panel">
+          {selectedJob ? (
+            <>
               <div className="panel-heading">
                 <div>
-                  <p className="eyebrow">Dashboard</p>
-                  <h2>Match insights</h2>
+                  <p className="eyebrow">{selectedJob.company}</p>
+                  <h2>{selectedJob.title}</h2>
                 </div>
-                <span className="status-pill">Grade {analysis.grade}</span>
+                <PortalBadge portal={selectedJob.portal} />
               </div>
-              <p className="lead-text">{analysis.summary}</p>
-              <div className="section-checklist">
-                {Object.entries(analysis.sections).map(([section, exists]) => (
-                  <span className={exists ? 'section-pill found' : 'section-pill missing'} key={section}>
-                    {exists ? 'Found' : 'Add'} {sectionLabels[section as keyof typeof sectionLabels]}
+              <div className="button-row">
+                <button className="ghost-button compact" disabled={isBusy} onClick={() => runScore(selectedJob)} type="button">
+                  Score match
+                </button>
+                <button
+                  className="ghost-button compact"
+                  disabled={isBusy}
+                  onClick={() => runGenerateResume(selectedJob)}
+                  type="button"
+                >
+                  Generate resume
+                </button>
+                <button
+                  className="primary-button compact"
+                  disabled={isBusy}
+                  onClick={() => runApplyDryRun(selectedJob)}
+                  type="button"
+                >
+                  Dry-run apply
+                </button>
+              </div>
+              <dl className="job-facts">
+                <div>
+                  <dt>Match score</dt>
+                  <dd>{selectedJob.match_score === null ? 'Pending' : `${selectedJob.match_score}/100`}</dd>
+                </div>
+                <div>
+                  <dt>Apply status</dt>
+                  <dd>{selectedJob.apply_status.replace(/_/g, ' ')}</dd>
+                </div>
+              </dl>
+              <p className="lead-text">{selectedJob.score_reason ?? 'Run scoring to get an OpenAI resume match summary.'}</p>
+              <div className="keyword-cloud">
+                {(selectedJob.missing_keywords.length ? selectedJob.missing_keywords : ['No missing keywords yet']).map((keyword) => (
+                  <span className="chip warning" key={keyword}>
+                    {keyword}
                   </span>
                 ))}
               </div>
-            </article>
-
-            <article className="analysis-card">
-              <div className="panel-heading">
-                <h2>Top strengths</h2>
-              </div>
-              <ul className="insight-list">
-                {analysis.strengths.map((strength) => (
-                  <li key={strength}>{strength}</li>
-                ))}
-              </ul>
-            </article>
-
-            <article className="analysis-card">
-              <div className="panel-heading">
-                <h2>Action plan</h2>
-              </div>
-              <ul className="insight-list numbered">
-                {analysis.improvements.map((improvement) => (
-                  <li key={improvement}>{improvement}</li>
-                ))}
-              </ul>
-            </article>
-          </section>
-
-          <section className="keyword-grid" aria-label="Keyword comparison">
-            <KeywordList title="Matched JD keywords" keywords={analysis.matchedKeywords} tone="good" />
-            <KeywordList title="Missing JD keywords" keywords={analysis.missingKeywords} tone="warning" />
-          </section>
-
-          <section className="dashboard-grid">
-            <article className="analysis-card">
-              <div className="panel-heading">
-                <div>
-                  <p className="eyebrow">ATS scan</p>
-                  <h2>Parser safety checks</h2>
-                </div>
-                <span className="status-pill">{analysis.atsIssues.length} findings</span>
-              </div>
-              {analysis.atsIssues.length ? (
-                <div className="issue-list">
-                  {analysis.atsIssues.map((issue) => (
-                    <div className={`issue ${issue.severity}`} key={issue.title}>
-                      <span>{severityLabel[issue.severity]}</span>
-                      <strong>{issue.title}</strong>
-                      <p>{issue.detail}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="muted">No major ATS issues detected. Keep the resume in a simple single-column format.</p>
-              )}
-            </article>
-
-            <article className="analysis-card rewrite-card">
-              <div className="panel-heading">
-                <div>
-                  <p className="eyebrow">Resume rewrite agent</p>
-                  <h2>ATS-friendly draft</h2>
-                </div>
-                <div className="button-row">
-                  <button className="ghost-button compact" onClick={copyRewrite} type="button">
-                    {copyStatus}
-                  </button>
-                  <button className="primary-button compact" onClick={downloadRewrite} type="button">
-                    Download
-                  </button>
-                </div>
-              </div>
-              <textarea aria-label="ATS-friendly rewritten resume" readOnly value={analysis.rewrittenResume} />
-            </article>
-          </section>
-        </>
-      )}
+              <h3>Job description</h3>
+              <p className="description-box">{selectedJob.description}</p>
+              <h3>Generated ATS resume</h3>
+              <textarea
+                aria-label="Generated ATS resume"
+                readOnly
+                value={selectedJob.generated_resume ?? 'Generate an ATS optimized resume for this job.'}
+              />
+            </>
+          ) : (
+            <div className="empty-state">
+              <p className="eyebrow">No job selected</p>
+              <h2>Scrape jobs to start the application workflow.</h2>
+            </div>
+          )}
+        </article>
+      </section>
     </main>
   );
 }

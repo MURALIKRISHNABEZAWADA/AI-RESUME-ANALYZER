@@ -1,0 +1,11 @@
+beautifulsoup4
+fastapi
+httpx
+openai
+playwright
+psycopg[binary]
+pydantic-settings
+pytest
+pytest-asyncio
+sqlalchemy
+uvicorn[standard]
