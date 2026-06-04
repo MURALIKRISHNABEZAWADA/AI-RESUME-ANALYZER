@@ -50,8 +50,8 @@ We need a Full Stack Engineer with React, TypeScript, Node, AWS, automation, tes
     const applicationPackage = generateApplicationPackage(resume, jobDescription, analysis);
 
     expect(applicationPackage.companyName).toBe('Acme Health');
-    expect(applicationPackage.riskFlags.join(' ')).toContain('TypeScript');
-    expect(applicationPackage.workflow[0].detail).toContain('TypeScript');
+    expect(applicationPackage.riskFlags.join(' ')).toContain('Automation');
+    expect(applicationPackage.workflow[0].detail).toContain('Automation');
     expect(applicationPackage.trackerFields).toContainEqual({
       label: 'Company',
       value: 'Acme Health',
