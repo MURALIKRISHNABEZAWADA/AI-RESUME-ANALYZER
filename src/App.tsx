@@ -120,6 +120,20 @@ function App() {
   };
 
   const copyWithFallback = async (content: string) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await Promise.race([
+          navigator.clipboard.writeText(content),
+          new Promise<never>((_, reject) =>
+            window.setTimeout(() => reject(new Error('Clipboard write timed out')), 600),
+          ),
+        ]);
+        return;
+      } catch {
+        // Fall through to the text selection copy path.
+      }
+    }
+
     const textarea = document.createElement('textarea');
     textarea.value = content;
     textarea.setAttribute('readonly', '');
@@ -136,16 +150,6 @@ function App() {
       document.body.removeChild(textarea);
     }
 
-    if (navigator.clipboard?.writeText) {
-      await Promise.race([
-        navigator.clipboard.writeText(content),
-        new Promise<never>((_, reject) =>
-          window.setTimeout(() => reject(new Error('Clipboard write timed out')), 600),
-        ),
-      ]);
-      return;
-    }
-
     throw new Error('Clipboard is unavailable');
   };
 
@@ -154,6 +158,8 @@ function App() {
       return;
     }
 
+    setStatus('Copying...');
+
     try {
       await copyWithFallback(content);
       setStatus('Copied');
@@ -161,7 +167,7 @@ function App() {
       setStatus('Copy failed');
     }
 
-    window.setTimeout(() => setStatus(resetLabel), 1800);
+    window.setTimeout(() => setStatus(resetLabel), 4000);
   };
 
   const copyRewrite = () => copyText(analysis.rewrittenResume, setCopyStatus, 'Copy resume');
