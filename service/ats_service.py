@@ -435,9 +435,9 @@ def get_contact_line(resume: str) -> str:
 def extract_existing_bullets(resume: str, limit: int = 10) -> list[str]:
     bullets: list[str] = []
     for line in resume.splitlines():
-        cleaned = re.sub(r"^[\s*\-•]+", "", line).strip()
+        cleaned = re.sub(r"^[\s*\-\u2022]+", "", line).strip()
         if 35 <= len(cleaned) <= 240 and (
-            line.lstrip().startswith(("-", "*", "•")) or any(contains_term(cleaned, verb) for verb in ACTION_VERBS) or re.search(r"\d", cleaned)
+            line.lstrip().startswith(("-", "*", "\u2022")) or any(contains_term(cleaned, verb) for verb in ACTION_VERBS) or re.search(r"\d", cleaned)
         ):
             bullets.append(cleaned)
     return bullets[:limit]
