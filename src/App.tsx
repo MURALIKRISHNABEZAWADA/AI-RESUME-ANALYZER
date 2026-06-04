@@ -1,4 +1,5 @@
-import { ChangeEvent, useMemo, useState } from 'react';
+import { type CSSProperties, type ChangeEvent, useMemo, useState } from 'react';
+import { generateApplicationPackage } from './applicationAgent';
 import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
 
 const sectionLabels = {
@@ -55,8 +56,8 @@ function EmptyState() {
         <p className="eyebrow">Ready when you are</p>
         <h2>Paste a resume and job description to generate your match score.</h2>
         <p>
-          The dashboard compares JD keywords, ATS formatting, resume structure, and measurable impact. The rewrite
-          agent then creates an ATS-friendly draft you can refine before applying.
+          The dashboard compares JD keywords, ATS formatting, resume structure, and measurable impact. The agents then
+          create an ATS-friendly resume draft and a job application packet you can refine before applying.
         </p>
       </div>
     </section>
@@ -67,19 +68,26 @@ function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [copyStatus, setCopyStatus] = useState('Copy resume');
+  const [copyPackageStatus, setCopyPackageStatus] = useState('Copy packet');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
+  const applicationPackage = useMemo(
+    () => generateApplicationPackage(resume, jobDescription, analysis),
+    [analysis, jobDescription, resume],
+  );
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
 
   const loadSample = () => {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
     setCopyStatus('Copy resume');
+    setCopyPackageStatus('Copy packet');
   };
 
   const resetDashboard = () => {
     setResume('');
     setJobDescription('');
     setCopyStatus('Copy resume');
+    setCopyPackageStatus('Copy packet');
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -92,43 +100,57 @@ function App() {
     reader.onload = () => {
       setResume(String(reader.result ?? ''));
       setCopyStatus('Copy resume');
+      setCopyPackageStatus('Copy packet');
     };
     reader.readAsText(file);
   };
 
-  const copyRewrite = async () => {
-    if (!analysis.rewrittenResume) {
+  const downloadTextFile = (content: string, filename: string) => {
+    if (!content) {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
-    setCopyStatus('Copied');
-    window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
-  };
-
-  const downloadRewrite = () => {
-    if (!analysis.rewrittenResume) {
-      return;
-    }
-
-    const blob = new Blob([analysis.rewrittenResume], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'ats-friendly-resume.txt';
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const copyText = async (content: string, setStatus: (status: string) => void, resetLabel: string) => {
+    if (!content) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(content);
+    setStatus('Copied');
+    window.setTimeout(() => setStatus(resetLabel), 1800);
+  };
+
+  const copyRewrite = () => copyText(analysis.rewrittenResume, setCopyStatus, 'Copy resume');
+
+  const downloadRewrite = () => {
+    downloadTextFile(analysis.rewrittenResume, 'ats-friendly-resume.txt');
+  };
+
+  const copyApplicationPackage = () =>
+    copyText(applicationPackage.exportText, setCopyPackageStatus, 'Copy packet');
+
+  const downloadApplicationPackage = () => {
+    downloadTextFile(applicationPackage.exportText, 'job-application-package.txt');
   };
 
   return (
     <main className="app-shell">
       <section className="hero-section">
         <div className="hero-copy">
-          <p className="eyebrow">AI Resume Analyzer</p>
-          <h1>Score your resume against any job description.</h1>
+          <p className="eyebrow">Job Application Agent</p>
+          <h1>Automate your job application prep.</h1>
           <p>
             Upload or paste your resume, add the JD, and get an instant match score, ATS readiness report, missing
-            keywords, and a clean resume rewrite draft tailored to the role.
+            keywords, a tailored resume draft, cover letter, recruiter message, and application workflow.
           </p>
           <div className="hero-actions">
             <button className="primary-button" onClick={loadSample} type="button">
@@ -140,7 +162,7 @@ function App() {
           </div>
         </div>
         <div className="score-hero-card" aria-label="Resume score preview">
-          <div className="score-ring" style={{ '--score': `${analysis.score * 3.6}deg` } as React.CSSProperties}>
+          <div className="score-ring" style={{ '--score': `${analysis.score * 3.6}deg` } as CSSProperties}>
             <span>{hasAnalysis ? analysis.score : 0}</span>
           </div>
           <div>
@@ -195,6 +217,11 @@ function App() {
             <MetricCard label="Overall score" value={`${analysis.score}/100`} helper="Weighted resume-to-JD match" />
             <MetricCard label="Keyword coverage" value={`${analysis.keywordCoverage}%`} helper="JD terms found in resume" />
             <MetricCard label="ATS readiness" value={`${analysis.atsReadiness}%`} helper="Formatting and parser safety" />
+            <MetricCard
+              label="Apply readiness"
+              value={`${applicationPackage.readinessScore}/100`}
+              helper={applicationPackage.readinessLabel}
+            />
             <MetricCard label="Missing keywords" value={`${analysis.missingKeywords.length}`} helper="Terms to add truthfully" />
           </section>
 
@@ -243,6 +270,117 @@ function App() {
           <section className="keyword-grid" aria-label="Keyword comparison">
             <KeywordList title="Matched JD keywords" keywords={analysis.matchedKeywords} tone="good" />
             <KeywordList title="Missing JD keywords" keywords={analysis.missingKeywords} tone="warning" />
+          </section>
+
+          <section className="dashboard-grid application-agent-grid" aria-label="Job application automation agent">
+            <article className="analysis-card wide-card agent-card">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Application automation agent</p>
+                  <h2>{applicationPackage.roleTitle}</h2>
+                </div>
+                <div className="button-row">
+                  <button className="ghost-button compact" onClick={copyApplicationPackage} type="button">
+                    {copyPackageStatus}
+                  </button>
+                  <button className="primary-button compact" onClick={downloadApplicationPackage} type="button">
+                    Download packet
+                  </button>
+                </div>
+              </div>
+              <p className="lead-text">
+                The agent turns your resume analysis into a human-reviewed application workflow for{' '}
+                {applicationPackage.companyName}. Use it to tailor materials, prepare answers, track submissions, and
+                follow up without losing context.
+              </p>
+              <div className="agent-summary-grid">
+                <div className="readiness-meter">
+                  <span>Apply readiness</span>
+                  <strong>{applicationPackage.readinessScore}/100</strong>
+                  <p>{applicationPackage.readinessLabel}</p>
+                </div>
+                <div>
+                  <h3>Risks to fix first</h3>
+                  <ul className="insight-list compact-list">
+                    {applicationPackage.riskFlags.map((risk) => (
+                      <li key={risk}>{risk}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h3>Tracker setup</h3>
+                  <div className="tracker-grid">
+                    {applicationPackage.trackerFields.slice(0, 6).map((field) => (
+                      <div className="tracker-field" key={field.label}>
+                        <span>{field.label}</span>
+                        <strong>{field.value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article className="analysis-card">
+              <div className="panel-heading">
+                <h2>Workflow checklist</h2>
+              </div>
+              <div className="workflow-list">
+                {applicationPackage.workflow.map((step) => (
+                  <div className="workflow-step" key={step.title}>
+                    <span>{step.priority}</span>
+                    <strong>{step.title}</strong>
+                    <p>{step.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="analysis-card">
+              <div className="panel-heading">
+                <h2>Application answer bank</h2>
+              </div>
+              <div className="answer-list">
+                {applicationPackage.applicationAnswers.map((answer) => (
+                  <div className="answer-card" key={answer.question}>
+                    <strong>{answer.question}</strong>
+                    <p>{answer.answer}</p>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="analysis-card wide-card">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Outreach</p>
+                  <h2>Cover letter and follow-up copy</h2>
+                </div>
+              </div>
+              <div className="message-grid">
+                <label className="message-card">
+                  Cover letter draft
+                  <textarea aria-label="Generated cover letter" readOnly value={applicationPackage.coverLetter} />
+                </label>
+                <label className="message-card">
+                  Recruiter message
+                  <textarea
+                    aria-label="Generated recruiter message"
+                    className="small-textarea"
+                    readOnly
+                    value={applicationPackage.recruiterMessage}
+                  />
+                </label>
+              </div>
+              <div className="follow-up-grid">
+                {applicationPackage.followUpPlan.map((touchpoint) => (
+                  <div className="follow-up-card" key={touchpoint.timing}>
+                    <span>{touchpoint.timing}</span>
+                    <p>{touchpoint.message}</p>
+                  </div>
+                ))}
+              </div>
+            </article>
           </section>
 
           <section className="dashboard-grid">

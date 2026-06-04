@@ -310,7 +310,7 @@ textarea:focus {
 }
 
 .metrics-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .metric-card {
@@ -355,6 +355,141 @@ textarea:focus {
 .lead-text {
   color: #526983;
   font-size: 1.02rem;
+}
+
+.application-agent-grid {
+  align-items: start;
+}
+
+.agent-card {
+  background:
+    radial-gradient(circle at top right, rgba(18, 179, 255, 0.12), transparent 34%),
+    rgba(255, 255, 255, 0.94);
+}
+
+.agent-summary-grid,
+.message-grid,
+.follow-up-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.agent-summary-grid {
+  grid-template-columns: 0.75fr 1fr 1.25fr;
+  margin-top: 22px;
+}
+
+.readiness-meter,
+.tracker-field,
+.workflow-step,
+.answer-card,
+.follow-up-card {
+  border: 1px solid #dbe7f7;
+  border-radius: 18px;
+  background: #f8fbff;
+}
+
+.readiness-meter {
+  display: grid;
+  align-content: center;
+  min-height: 190px;
+  padding: 20px;
+}
+
+.readiness-meter span,
+.tracker-field span,
+.workflow-step span,
+.follow-up-card span {
+  color: #6381a3;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.readiness-meter strong {
+  color: #14213d;
+  font-size: 3rem;
+  line-height: 1;
+  letter-spacing: -0.06em;
+}
+
+.readiness-meter p {
+  margin: 8px 0 0;
+  color: #526983;
+}
+
+.compact-list {
+  margin-top: 12px;
+}
+
+.tracker-grid,
+.workflow-list,
+.answer-list {
+  display: grid;
+  gap: 12px;
+}
+
+.tracker-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
+.tracker-field {
+  padding: 12px;
+}
+
+.tracker-field strong {
+  display: block;
+  color: #14213d;
+  font-size: 0.95rem;
+}
+
+.workflow-step,
+.answer-card,
+.follow-up-card {
+  padding: 16px;
+}
+
+.workflow-step strong,
+.answer-card strong {
+  display: block;
+  margin: 2px 0 6px;
+  color: #14213d;
+}
+
+.workflow-step p,
+.answer-card p,
+.follow-up-card p {
+  margin: 0;
+  color: #526983;
+}
+
+.message-grid {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+}
+
+.message-card {
+  display: grid;
+  gap: 10px;
+  color: #14213d;
+  font-weight: 900;
+}
+
+.message-card textarea {
+  min-height: 300px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.92rem;
+  font-weight: 400;
+  line-height: 1.65;
+}
+
+.message-card .small-textarea {
+  min-height: 160px;
+}
+
+.follow-up-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 16px;
 }
 
 .status-pill {
@@ -494,12 +629,19 @@ textarea:focus {
   .hero-section,
   .input-grid,
   .keyword-grid,
+  .agent-summary-grid,
+  .message-grid,
+  .follow-up-grid,
   .dashboard-grid {
     grid-template-columns: 1fr;
   }
 
   .metrics-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tracker-grid {
+    grid-template-columns: 1fr;
   }
 }
 
