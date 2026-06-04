@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 
 REMOTEOK_URL = "https://remoteok.com/api"
 REMOTIVE_URL = "https://remotive.com/api/remote-jobs"
+JOBICY_URL = "https://jobicy.com/api/v2/remote-jobs"
 
 
 @dataclass(frozen=True)
@@ -88,8 +89,11 @@ class JobScraper:
         async with self._get_client() as client:
             jobs = []
             for term in search_terms:
-                jobs.extend(await self._fetch_remoteok(client, term))
-                jobs.extend(await self._fetch_remotive(client, term))
+                for fetch in (self._fetch_remoteok, self._fetch_remotive, self._fetch_jobicy):
+                    try:
+                        jobs.extend(await fetch(client, term))
+                    except httpx.HTTPError:
+                        continue
 
         fresh_jobs = [
             job
@@ -157,6 +161,33 @@ class JobScraper:
                     portal=detect_portal(url),
                     posted_at=posted_at,
                     description=html_to_text(item.get("description")),
+                )
+            )
+        return jobs
+
+    async def _fetch_jobicy(self, client: httpx.AsyncClient, _term: str) -> list[ScrapedJob]:
+        response = await client.get(f"{JOBICY_URL}?count=100")
+        response.raise_for_status()
+        payload = response.json()
+        jobs: list[ScrapedJob] = []
+        for item in payload.get("jobs", []) if isinstance(payload, dict) else []:
+            posted_at = parse_posted_at(item.get("pubDate"))
+            if not posted_at:
+                continue
+            url = str(item.get("url") or "")
+            description = html_to_text(item.get("jobDescription") or item.get("jobExcerpt"))
+            jobs.append(
+                ScrapedJob(
+                    source="jobicy",
+                    external_id=str(item.get("id") or url),
+                    title=str(item.get("jobTitle") or ""),
+                    company=str(item.get("companyName") or ""),
+                    location=str(item.get("jobGeo") or "Remote"),
+                    remote=True,
+                    url=url,
+                    portal=detect_portal(url),
+                    posted_at=posted_at,
+                    description=description,
                 )
             )
         return jobs
