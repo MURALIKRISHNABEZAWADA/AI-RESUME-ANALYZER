@@ -1,6 +1,6 @@
 # Remote Data Scientist Job Agent
 
-Full-stack application for discovering fresh remote Data Scientist roles, storing them in PostgreSQL, scoring resume fit with OpenAI, generating ATS optimized resumes, and preparing applications for Greenhouse, Lever, and Workday portals.
+Full-stack application for discovering fresh remote Data Scientist roles, storing them in PostgreSQL, scoring resume fit, generating ATS optimized resumes, and preparing applications for Greenhouse, Lever, and Workday portals.
 
 ## Features
 
@@ -12,8 +12,9 @@ Full-stack application for discovering fresh remote Data Scientist roles, storin
 - Provides deterministic local scoring and resume generation fallback for development.
 - Uses Playwright portal adapters for Greenhouse, Lever, and Workday with dry-run behavior by default.
 - Exposes a React dashboard for scraping, scoring, resume tailoring, and application dry runs.
+- Includes a standard-library Python ATS service that extracts keywords, rewrites bullets, calculates a match score, and returns an ATS-optimized PDF.
 
-## Backend setup
+## FastAPI job agent backend
 
 ```bash
 cd backend
@@ -43,6 +44,38 @@ Useful optional settings:
 - `PLAYWRIGHT_HEADLESS`: defaults to `true`.
 - `AUTO_SUBMIT_APPLICATIONS`: defaults to `false`; keep false unless you intentionally want Playwright to submit forms.
 
+### Job agent API
+
+- `POST /jobs/scrape`: scrape fresh remote jobs, store them, and optionally score/generate resumes.
+- `GET /jobs`: list stored jobs.
+- `POST /jobs/{job_id}/score`: score one job against resume text.
+- `POST /jobs/{job_id}/resume`: generate an ATS optimized resume for one job.
+- `POST /jobs/{job_id}/apply`: run a Greenhouse, Lever, or Workday application automation dry run by default.
+
+## Standard-library ATS service
+
+The standalone ATS service uses only the Python standard library. Run it on another port when the FastAPI job agent is already using `8000`.
+
+```bash
+python3 -m service.app --host 127.0.0.1 --port 8001
+```
+
+Health check:
+
+```bash
+curl http://127.0.0.1:8001/health
+```
+
+Optimize a resume:
+
+```bash
+curl -X POST http://127.0.0.1:8001/optimize \
+  -H "Content-Type: application/json" \
+  -d '{"master_resume":"Paste resume text here","job_description":"Paste job description here"}'
+```
+
+The `/optimize` response includes `ats_keywords`, `matched_keywords`, `missing_keywords`, `rewritten_bullets`, `optimized_resume_text`, `ats_match_score`, and a base64 `pdf_base64` payload for `ats-optimized-resume.pdf`.
+
 ## Frontend setup
 
 ```bash
@@ -56,19 +89,15 @@ The dashboard calls `http://localhost:8000` by default. Override with:
 export VITE_API_BASE_URL="http://localhost:8000"
 ```
 
-## API overview
-
-- `POST /jobs/scrape`: scrape fresh remote jobs, store them, and optionally score/generate resumes.
-- `GET /jobs`: list stored jobs.
-- `POST /jobs/{job_id}/score`: score one job against resume text.
-- `POST /jobs/{job_id}/resume`: generate an ATS optimized resume for one job.
-- `POST /jobs/{job_id}/apply`: run a Greenhouse, Lever, or Workday application automation dry run by default.
-
 ## Tests
 
 ```bash
 cd backend
-pytest
+python3 -m pytest
+```
+
+```bash
+python3 -m unittest discover -s tests
 ```
 
 ```bash
