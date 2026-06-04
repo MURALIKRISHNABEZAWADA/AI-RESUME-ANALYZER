@@ -120,15 +120,6 @@ function App() {
   };
 
   const copyWithFallback = async (content: string) => {
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(content);
-        return;
-      } catch {
-        // Fall back for browsers or test environments that block async clipboard writes.
-      }
-    }
-
     const textarea = document.createElement('textarea');
     textarea.value = content;
     textarea.setAttribute('readonly', '');
@@ -138,10 +129,24 @@ function App() {
     textarea.select();
 
     try {
-      document.execCommand('copy');
+      if (document.execCommand('copy')) {
+        return;
+      }
     } finally {
       document.body.removeChild(textarea);
     }
+
+    if (navigator.clipboard?.writeText) {
+      await Promise.race([
+        navigator.clipboard.writeText(content),
+        new Promise<never>((_, reject) =>
+          window.setTimeout(() => reject(new Error('Clipboard write timed out')), 600),
+        ),
+      ]);
+      return;
+    }
+
+    throw new Error('Clipboard is unavailable');
   };
 
   const copyText = async (content: string, setStatus: (status: string) => void, resetLabel: string) => {
