@@ -119,13 +119,43 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const copyWithFallback = async (content: string) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(content);
+        return;
+      } catch {
+        // Fall back for browsers or test environments that block async clipboard writes.
+      }
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = content;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+      document.execCommand('copy');
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  };
+
   const copyText = async (content: string, setStatus: (status: string) => void, resetLabel: string) => {
     if (!content) {
       return;
     }
 
-    await navigator.clipboard.writeText(content);
-    setStatus('Copied');
+    try {
+      await copyWithFallback(content);
+      setStatus('Copied');
+    } catch {
+      setStatus('Copy failed');
+    }
+
     window.setTimeout(() => setStatus(resetLabel), 1800);
   };
 
