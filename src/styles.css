@@ -490,11 +490,161 @@ textarea:focus {
   line-height: 1.65;
 }
 
+.application-agent-section {
+  margin-bottom: 24px;
+}
+
+.agent-overview-card {
+  margin-bottom: 24px;
+}
+
+.agent-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
+  gap: 20px;
+}
+
+.agent-score-card {
+  border-radius: 22px;
+  padding: 22px;
+  background: linear-gradient(135deg, #0f2f58, #3478f6);
+  color: #ffffff;
+}
+
+.agent-score-card .score-label,
+.agent-score-card p {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.agent-score-card strong {
+  display: block;
+  margin: 8px 0;
+  font-size: 2.65rem;
+  line-height: 1;
+  letter-spacing: -0.06em;
+}
+
+.agent-score-card p {
+  margin-bottom: 0;
+}
+
+.agent-input-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.agent-input-grid label {
+  display: grid;
+  gap: 8px;
+  color: #516884;
+  font-size: 0.84rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.agent-input-grid input {
+  min-height: 46px;
+  border: 1px solid #d6e2f1;
+  border-radius: 16px;
+  padding: 0 14px;
+  outline: none;
+  background: #f8fbff;
+  color: #172b4d;
+  font-weight: 600;
+  text-transform: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.agent-input-grid input:focus {
+  border-color: #3478f6;
+  box-shadow: 0 0 0 4px rgba(52, 120, 246, 0.12);
+}
+
+.agent-actions {
+  margin-top: 18px;
+}
+
+.agent-note {
+  margin: 14px 0 0;
+  color: #6c7f98;
+  font-size: 0.92rem;
+}
+
+.agent-list,
+.follow-up-list,
+.answer-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.checklist-item,
+.follow-up-step,
+.answer-card {
+  border: 1px solid #e0e9f6;
+  border-radius: 18px;
+  padding: 16px;
+  background: #f8fbff;
+}
+
+.checklist-item {
+  border-left-width: 5px;
+}
+
+.checklist-item.ready {
+  border-left-color: #27c08a;
+}
+
+.checklist-item.review {
+  border-left-color: #f59e0b;
+}
+
+.checklist-item.needed {
+  border-left-color: #ef4444;
+}
+
+.checklist-item span {
+  color: #6381a3;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.checklist-item strong,
+.follow-up-step strong,
+.answer-card strong {
+  display: block;
+  margin-top: 2px;
+  color: #14213d;
+}
+
+.checklist-item p,
+.follow-up-step p,
+.answer-card p {
+  margin: 6px 0 0;
+  color: #526983;
+}
+
+.compact-textarea {
+  min-height: 220px;
+  margin-bottom: 18px;
+}
+
+.answer-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 @media (max-width: 1120px) {
   .hero-section,
   .input-grid,
   .keyword-grid,
-  .dashboard-grid {
+  .dashboard-grid,
+  .agent-overview-grid,
+  .agent-input-grid,
+  .answer-grid {
     grid-template-columns: 1fr;
   }
 

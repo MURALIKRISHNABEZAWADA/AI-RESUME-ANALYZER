@@ -1,4 +1,5 @@
 import { ChangeEvent, useMemo, useState } from 'react';
+import { generateJobApplicationKit } from './jobApplicationAgent';
 import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
 
 const sectionLabels = {
@@ -66,20 +67,44 @@ function EmptyState() {
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [jobUrl, setJobUrl] = useState('');
+  const [contactName, setContactName] = useState('');
   const [copyStatus, setCopyStatus] = useState('Copy resume');
+  const [outreachCopyStatus, setOutreachCopyStatus] = useState('Copy outreach');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
+  const applicationKit = useMemo(
+    () =>
+      generateJobApplicationKit({
+        resume,
+        jobDescription,
+        companyName,
+        jobUrl,
+        contactName,
+        analysis,
+      }),
+    [analysis, companyName, contactName, jobDescription, jobUrl, resume],
+  );
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
 
   const loadSample = () => {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
+    setCompanyName('BrightApps');
+    setJobUrl('https://careers.example.com/frontend-engineer');
+    setContactName('Jordan Lee');
     setCopyStatus('Copy resume');
+    setOutreachCopyStatus('Copy outreach');
   };
 
   const resetDashboard = () => {
     setResume('');
     setJobDescription('');
+    setCompanyName('');
+    setJobUrl('');
+    setContactName('');
     setCopyStatus('Copy resume');
+    setOutreachCopyStatus('Copy outreach');
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -106,18 +131,32 @@ function App() {
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
 
+  const copyOutreach = async () => {
+    if (!applicationKit.outreachMessage) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(applicationKit.outreachMessage);
+    setOutreachCopyStatus('Copied');
+    window.setTimeout(() => setOutreachCopyStatus('Copy outreach'), 1800);
+  };
+
+  const downloadText = (content: string, filename: string, type = 'text/plain;charset=utf-8') => {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const downloadRewrite = () => {
     if (!analysis.rewrittenResume) {
       return;
     }
 
-    const blob = new Blob([analysis.rewrittenResume], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'ats-friendly-resume.txt';
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadText(analysis.rewrittenResume, 'ats-friendly-resume.txt');
   };
 
   return (
@@ -243,6 +282,155 @@ function App() {
           <section className="keyword-grid" aria-label="Keyword comparison">
             <KeywordList title="Matched JD keywords" keywords={analysis.matchedKeywords} tone="good" />
             <KeywordList title="Missing JD keywords" keywords={analysis.missingKeywords} tone="warning" />
+          </section>
+
+          <section className="application-agent-section" aria-label="Job application automation agent">
+            <article className="analysis-card wide-card agent-overview-card">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Application automation agent</p>
+                  <h2>Generate your application kit</h2>
+                </div>
+                <span className="status-pill">{applicationKit.readinessLabel}</span>
+              </div>
+              <div className="agent-overview-grid">
+                <div className="agent-score-card">
+                  <span className="score-label">Application readiness</span>
+                  <strong>{applicationKit.readinessScore}/100</strong>
+                  <p>{applicationKit.applicationSummary}</p>
+                </div>
+                <div className="agent-input-grid">
+                  <label>
+                    Company name
+                    <input
+                      onChange={(event) => setCompanyName(event.target.value)}
+                      placeholder="Target company"
+                      type="text"
+                      value={companyName}
+                    />
+                  </label>
+                  <label>
+                    Job posting URL
+                    <input
+                      onChange={(event) => setJobUrl(event.target.value)}
+                      placeholder="https://..."
+                      type="url"
+                      value={jobUrl}
+                    />
+                  </label>
+                  <label>
+                    Recruiter or contact
+                    <input
+                      onChange={(event) => setContactName(event.target.value)}
+                      placeholder="Optional"
+                      type="text"
+                      value={contactName}
+                    />
+                  </label>
+                </div>
+              </div>
+              <div className="button-row agent-actions">
+                <button className="ghost-button compact" onClick={copyOutreach} type="button">
+                  {outreachCopyStatus}
+                </button>
+                <button
+                  className="primary-button compact"
+                  onClick={() => downloadText(applicationKit.kitText, 'job-application-kit.txt')}
+                  type="button"
+                >
+                  Download kit
+                </button>
+                <button
+                  className="ghost-button compact"
+                  onClick={() => downloadText(applicationKit.trackerCsv, 'job-application-tracker.csv', 'text/csv;charset=utf-8')}
+                  type="button"
+                >
+                  Download tracker CSV
+                </button>
+              </div>
+              <p className="agent-note">
+                Use this agent to prepare materials, track progress, and plan follow-ups. Review every claim before submitting
+                through the employer's official application flow.
+              </p>
+            </article>
+
+            <div className="dashboard-grid">
+              <article className="analysis-card">
+                <div className="panel-heading">
+                  <h2>Application checklist</h2>
+                </div>
+                <div className="agent-list">
+                  {applicationKit.checklist.map((item) => (
+                    <div className={`checklist-item ${item.status}`} key={item.title}>
+                      <span>{item.status}</span>
+                      <strong>{item.title}</strong>
+                      <p>{item.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="analysis-card">
+                <div className="panel-heading">
+                  <h2>Priority workflow</h2>
+                </div>
+                <ol className="insight-list numbered">
+                  {applicationKit.priorityActions.map((action) => (
+                    <li key={action}>{action}</li>
+                  ))}
+                </ol>
+              </article>
+
+              <article className="analysis-card rewrite-card">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">Generated draft</p>
+                    <h2>Tailored cover letter</h2>
+                  </div>
+                </div>
+                <textarea aria-label="Tailored cover letter draft" readOnly value={applicationKit.coverLetter} />
+              </article>
+
+              <article className="analysis-card">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">Outreach</p>
+                    <h2>Recruiter message</h2>
+                  </div>
+                </div>
+                <textarea
+                  aria-label="Recruiter outreach message"
+                  className="compact-textarea"
+                  readOnly
+                  value={applicationKit.outreachMessage}
+                />
+                <div className="follow-up-list">
+                  {applicationKit.followUpPlan.map((step) => (
+                    <div className="follow-up-step" key={step.timing}>
+                      <strong>{step.timing}</strong>
+                      <p>{step.action}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="analysis-card wide-card">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">Application forms</p>
+                    <h2>Reusable answer starters</h2>
+                  </div>
+                </div>
+                <div className="answer-grid">
+                  {applicationKit.formAnswers.map((item) => (
+                    <div className="answer-card" key={item.question}>
+                      <strong>{item.question}</strong>
+                      <p>{item.answer}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </div>
           </section>
 
           <section className="dashboard-grid">
