@@ -74,6 +74,7 @@ function App() {
   const [outreachCopyStatus, setOutreachCopyStatus] = useState('Copy outreach');
   const [kitDownloadStatus, setKitDownloadStatus] = useState('Download kit');
   const [trackerDownloadStatus, setTrackerDownloadStatus] = useState('Download tracker CSV');
+  const [agentActionStatus, setAgentActionStatus] = useState('');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
   const applicationKit = useMemo(
     () =>
@@ -99,6 +100,7 @@ function App() {
     setOutreachCopyStatus('Copy outreach');
     setKitDownloadStatus('Download kit');
     setTrackerDownloadStatus('Download tracker CSV');
+    setAgentActionStatus('');
   };
 
   const resetDashboard = () => {
@@ -111,6 +113,7 @@ function App() {
     setOutreachCopyStatus('Copy outreach');
     setKitDownloadStatus('Download kit');
     setTrackerDownloadStatus('Download tracker CSV');
+    setAgentActionStatus('');
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -128,20 +131,29 @@ function App() {
   };
 
   const copyText = async (content: string) => {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(content);
-      return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(content);
+        return true;
+      }
+    } catch {
+      // Some browsers block async clipboard access in automated or strict contexts.
     }
 
-    const textarea = document.createElement('textarea');
-    textarea.value = content;
-    textarea.setAttribute('readonly', 'true');
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = content;
+      textarea.setAttribute('readonly', 'true');
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const copyRewrite = async () => {
@@ -149,9 +161,10 @@ function App() {
       return;
     }
 
-    await copyText(analysis.rewrittenResume);
-    setCopyStatus('Copied');
-    window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
+    if (await copyText(analysis.rewrittenResume)) {
+      setCopyStatus('Copied');
+      window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
+    }
   };
 
   const copyOutreach = async () => {
@@ -159,9 +172,13 @@ function App() {
       return;
     }
 
-    await copyText(applicationKit.outreachMessage);
-    setOutreachCopyStatus('Copied');
-    window.setTimeout(() => setOutreachCopyStatus('Copy outreach'), 1800);
+    if (await copyText(applicationKit.outreachMessage)) {
+      setOutreachCopyStatus('Copied');
+      setAgentActionStatus('Recruiter outreach copied to your clipboard.');
+    } else {
+      setOutreachCopyStatus('Copy unavailable');
+      setAgentActionStatus('Clipboard access was blocked. Select the recruiter message and copy it manually.');
+    }
   };
 
   const downloadText = (content: string, filename: string, type = 'text/plain;charset=utf-8') => {
@@ -177,13 +194,13 @@ function App() {
   const downloadApplicationKit = () => {
     downloadText(applicationKit.kitText, 'job-application-kit.txt');
     setKitDownloadStatus('Downloaded');
-    window.setTimeout(() => setKitDownloadStatus('Download kit'), 1800);
+    setAgentActionStatus('Application kit downloaded as job-application-kit.txt.');
   };
 
   const downloadTrackerCsv = () => {
     downloadText(applicationKit.trackerCsv, 'job-application-tracker.csv', 'text/csv;charset=utf-8');
     setTrackerDownloadStatus('Downloaded');
-    window.setTimeout(() => setTrackerDownloadStatus('Download tracker CSV'), 1800);
+    setAgentActionStatus('Tracker CSV downloaded as job-application-tracker.csv.');
   };
 
   const downloadRewrite = () => {
@@ -383,6 +400,11 @@ function App() {
                   {trackerDownloadStatus}
                 </button>
               </div>
+              {agentActionStatus ? (
+                <p className="agent-action-status" role="status">
+                  {agentActionStatus}
+                </p>
+              ) : null}
               <p className="agent-note">
                 Use this agent to prepare materials, track progress, and plan follow-ups. Review every claim before submitting
                 through the employer's official application flow.

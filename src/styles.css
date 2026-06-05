@@ -577,6 +577,17 @@ textarea:focus {
   font-size: 0.92rem;
 }
 
+.agent-action-status {
+  display: inline-flex;
+  margin: 14px 0 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #e9fbf3;
+  color: #087b55;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
 .agent-list,
 .follow-up-list,
 .answer-grid {
