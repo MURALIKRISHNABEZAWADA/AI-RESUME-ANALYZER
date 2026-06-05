@@ -72,6 +72,8 @@ function App() {
   const [contactName, setContactName] = useState('');
   const [copyStatus, setCopyStatus] = useState('Copy resume');
   const [outreachCopyStatus, setOutreachCopyStatus] = useState('Copy outreach');
+  const [kitDownloadStatus, setKitDownloadStatus] = useState('Download kit');
+  const [trackerDownloadStatus, setTrackerDownloadStatus] = useState('Download tracker CSV');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
   const applicationKit = useMemo(
     () =>
@@ -95,6 +97,8 @@ function App() {
     setContactName('Jordan Lee');
     setCopyStatus('Copy resume');
     setOutreachCopyStatus('Copy outreach');
+    setKitDownloadStatus('Download kit');
+    setTrackerDownloadStatus('Download tracker CSV');
   };
 
   const resetDashboard = () => {
@@ -105,6 +109,8 @@ function App() {
     setContactName('');
     setCopyStatus('Copy resume');
     setOutreachCopyStatus('Copy outreach');
+    setKitDownloadStatus('Download kit');
+    setTrackerDownloadStatus('Download tracker CSV');
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -121,12 +127,29 @@ function App() {
     reader.readAsText(file);
   };
 
+  const copyText = async (content: string) => {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(content);
+      return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = content;
+    textarea.setAttribute('readonly', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  };
+
   const copyRewrite = async () => {
     if (!analysis.rewrittenResume) {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
+    await copyText(analysis.rewrittenResume);
     setCopyStatus('Copied');
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
@@ -136,7 +159,7 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(applicationKit.outreachMessage);
+    await copyText(applicationKit.outreachMessage);
     setOutreachCopyStatus('Copied');
     window.setTimeout(() => setOutreachCopyStatus('Copy outreach'), 1800);
   };
@@ -149,6 +172,18 @@ function App() {
     link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const downloadApplicationKit = () => {
+    downloadText(applicationKit.kitText, 'job-application-kit.txt');
+    setKitDownloadStatus('Downloaded');
+    window.setTimeout(() => setKitDownloadStatus('Download kit'), 1800);
+  };
+
+  const downloadTrackerCsv = () => {
+    downloadText(applicationKit.trackerCsv, 'job-application-tracker.csv', 'text/csv;charset=utf-8');
+    setTrackerDownloadStatus('Downloaded');
+    window.setTimeout(() => setTrackerDownloadStatus('Download tracker CSV'), 1800);
   };
 
   const downloadRewrite = () => {
@@ -335,17 +370,17 @@ function App() {
                 </button>
                 <button
                   className="primary-button compact"
-                  onClick={() => downloadText(applicationKit.kitText, 'job-application-kit.txt')}
+                  onClick={downloadApplicationKit}
                   type="button"
                 >
-                  Download kit
+                  {kitDownloadStatus}
                 </button>
                 <button
                   className="ghost-button compact"
-                  onClick={() => downloadText(applicationKit.trackerCsv, 'job-application-tracker.csv', 'text/csv;charset=utf-8')}
+                  onClick={downloadTrackerCsv}
                   type="button"
                 >
-                  Download tracker CSV
+                  {trackerDownloadStatus}
                 </button>
               </div>
               <p className="agent-note">

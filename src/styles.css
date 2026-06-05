@@ -550,9 +550,13 @@ textarea:focus {
   padding: 0 14px;
   outline: none;
   background: #f8fbff;
-  color: #172b4d;
+  color: #172b4d !important;
+  caret-color: #172b4d;
   font-weight: 600;
+  line-height: 46px;
+  opacity: 1;
   text-transform: none;
+  -webkit-text-fill-color: #172b4d;
   transition:
     border-color 160ms ease,
     box-shadow 160ms ease;
