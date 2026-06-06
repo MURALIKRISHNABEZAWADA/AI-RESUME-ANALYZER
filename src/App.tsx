@@ -84,6 +84,8 @@ const copyTextToClipboard = (text: string) => {
   copyTextWithFallback(text);
 };
 
+const COPY_FEEDBACK_DURATION_MS = 5000;
+
 const buildApplicationKitText = (analysis: ReturnType<typeof analyzeResume>) => {
   const plan = analysis.applicationPlan;
 
@@ -167,7 +169,7 @@ function App() {
 
     copyTextToClipboard(analysis.rewrittenResume);
     setCopyStatus('Copied');
-    window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
+    window.setTimeout(() => setCopyStatus('Copy resume'), COPY_FEEDBACK_DURATION_MS);
   };
 
   const copyCoverLetter = () => {
@@ -177,7 +179,7 @@ function App() {
 
     copyTextToClipboard(analysis.applicationPlan.coverLetter);
     setCoverLetterCopyStatus('Copied');
-    window.setTimeout(() => setCoverLetterCopyStatus('Copy cover letter'), 1800);
+    window.setTimeout(() => setCoverLetterCopyStatus('Copy cover letter'), COPY_FEEDBACK_DURATION_MS);
   };
 
   const copyOutreach = () => {
@@ -187,7 +189,7 @@ function App() {
 
     copyTextToClipboard(analysis.applicationPlan.recruiterMessage);
     setOutreachCopyStatus('Copied');
-    window.setTimeout(() => setOutreachCopyStatus('Copy outreach'), 1800);
+    window.setTimeout(() => setOutreachCopyStatus('Copy outreach'), COPY_FEEDBACK_DURATION_MS);
   };
 
   const downloadRewrite = () => {
