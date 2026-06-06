@@ -1,6 +1,6 @@
-# AI Resume Analyzer
+# AI Resume + Application Agent
 
-A user-friendly dashboard that compares a resume against a target job description, scores the match, checks ATS readiness, and generates an ATS-friendly resume rewrite draft.
+A user-friendly dashboard that compares a resume against a target job description, scores the match, checks ATS readiness, generates an ATS-friendly resume rewrite draft, and builds a practical job application automation kit.
 
 ## Features
 
@@ -9,7 +9,9 @@ A user-friendly dashboard that compares a resume against a target job descriptio
 - View an overall resume-to-JD score, keyword coverage, ATS readiness, and missing keywords.
 - Review ATS formatting issues and section checks.
 - Use the local resume rewrite agent to create a clean, single-column, ATS-friendly draft.
+- Use the local application automation agent to generate a readiness status, application checklist, cover letter draft, recruiter outreach note, follow-up cadence, and tracker fields.
 - Copy or download the rewritten resume as a text file.
+- Download the full job application automation kit as a text file.
 - Run the Python ATS service to extract keywords, rewrite bullets, calculate a match score, and return an ATS-optimized PDF.
 
 ## Getting started
@@ -57,4 +59,4 @@ python3 -m unittest discover -s tests
 
 ## Notes
 
-The analyzer runs locally in the browser with deterministic scoring logic. The generated rewrite is a structured draft and may include placeholders when the original resume lacks verified details. Replace placeholders with accurate experience before applying.
+The analyzer and application automation agent run locally in the browser with deterministic scoring logic. Generated rewrites, cover letters, outreach messages, and follow-up plans are structured drafts and may include placeholders when the original resume lacks verified details. Replace placeholders with accurate experience before applying.

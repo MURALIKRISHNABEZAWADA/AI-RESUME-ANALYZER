@@ -56,17 +56,54 @@ function EmptyState() {
         <h2>Paste a resume and job description to generate your match score.</h2>
         <p>
           The dashboard compares JD keywords, ATS formatting, resume structure, and measurable impact. The rewrite
-          agent then creates an ATS-friendly draft you can refine before applying.
+          and application agents then create an ATS-friendly draft, application checklist, outreach, and follow-up plan.
         </p>
       </div>
     </section>
   );
 }
 
+const buildApplicationKitText = (analysis: ReturnType<typeof analyzeResume>) => {
+  const plan = analysis.applicationPlan;
+
+  return [
+    'JOB APPLICATION AUTOMATION KIT',
+    '',
+    `Status: ${plan.status}`,
+    plan.fitSummary,
+    '',
+    'QUICK ACTIONS',
+    ...plan.quickActions.map((action) => `- ${action}`),
+    '',
+    'CHECKLIST',
+    ...plan.checklist.map((task) => `- [${task.priority}] ${task.title}: ${task.detail}`),
+    '',
+    'DOCUMENTS',
+    ...plan.documents.map((document) => `- ${document}`),
+    '',
+    'COVER LETTER',
+    plan.coverLetter,
+    '',
+    'RECRUITER MESSAGE',
+    plan.recruiterMessage,
+    '',
+    'FOLLOW-UP SCHEDULE',
+    ...plan.followUpSchedule.map((step) => `- ${step.timing}: ${step.action}. ${step.detail}`),
+    '',
+    'TRACKER FIELDS',
+    plan.trackerFields.join(', '),
+    '',
+    'RISK FLAGS',
+    ...(plan.riskFlags.length ? plan.riskFlags.map((risk) => `- ${risk}`) : ['- No major application risks detected.']),
+  ].join('\n');
+};
+
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [copyStatus, setCopyStatus] = useState('Copy resume');
+  const [coverLetterCopyStatus, setCoverLetterCopyStatus] = useState('Copy cover letter');
+  const [outreachCopyStatus, setOutreachCopyStatus] = useState('Copy outreach');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
 
@@ -74,12 +111,16 @@ function App() {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
     setCopyStatus('Copy resume');
+    setCoverLetterCopyStatus('Copy cover letter');
+    setOutreachCopyStatus('Copy outreach');
   };
 
   const resetDashboard = () => {
     setResume('');
     setJobDescription('');
     setCopyStatus('Copy resume');
+    setCoverLetterCopyStatus('Copy cover letter');
+    setOutreachCopyStatus('Copy outreach');
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -92,6 +133,8 @@ function App() {
     reader.onload = () => {
       setResume(String(reader.result ?? ''));
       setCopyStatus('Copy resume');
+      setCoverLetterCopyStatus('Copy cover letter');
+      setOutreachCopyStatus('Copy outreach');
     };
     reader.readAsText(file);
   };
@@ -104,6 +147,26 @@ function App() {
     await navigator.clipboard.writeText(analysis.rewrittenResume);
     setCopyStatus('Copied');
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
+  };
+
+  const copyCoverLetter = async () => {
+    if (!analysis.applicationPlan.coverLetter) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(analysis.applicationPlan.coverLetter);
+    setCoverLetterCopyStatus('Copied');
+    window.setTimeout(() => setCoverLetterCopyStatus('Copy cover letter'), 1800);
+  };
+
+  const copyOutreach = async () => {
+    if (!analysis.applicationPlan.recruiterMessage) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(analysis.applicationPlan.recruiterMessage);
+    setOutreachCopyStatus('Copied');
+    window.setTimeout(() => setOutreachCopyStatus('Copy outreach'), 1800);
   };
 
   const downloadRewrite = () => {
@@ -120,15 +183,29 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const downloadApplicationKit = () => {
+    if (!hasAnalysis) {
+      return;
+    }
+
+    const blob = new Blob([buildApplicationKitText(analysis)], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'job-application-automation-kit.txt';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <main className="app-shell">
       <section className="hero-section">
         <div className="hero-copy">
-          <p className="eyebrow">AI Resume Analyzer</p>
-          <h1>Score your resume against any job description.</h1>
+          <p className="eyebrow">AI Resume + Application Agent</p>
+          <h1>Automate your job application prep.</h1>
           <p>
-            Upload or paste your resume, add the JD, and get an instant match score, ATS readiness report, missing
-            keywords, and a clean resume rewrite draft tailored to the role.
+            Upload or paste your resume, add the JD, and get an instant match score, ATS readiness report, tailored
+            resume draft, cover letter, recruiter outreach, follow-up cadence, and application tracker plan.
           </p>
           <div className="hero-actions">
             <button className="primary-button" onClick={loadSample} type="button">
@@ -243,6 +320,128 @@ function App() {
           <section className="keyword-grid" aria-label="Keyword comparison">
             <KeywordList title="Matched JD keywords" keywords={analysis.matchedKeywords} tone="good" />
             <KeywordList title="Missing JD keywords" keywords={analysis.missingKeywords} tone="warning" />
+          </section>
+
+          <section className="dashboard-grid">
+            <article className="analysis-card wide-card application-agent-card">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Application automation agent</p>
+                  <h2>Submission readiness and next actions</h2>
+                </div>
+                <div className="button-row">
+                  <span className="status-pill">{analysis.applicationPlan.status}</span>
+                  <button className="primary-button compact" onClick={downloadApplicationKit} type="button">
+                    Download kit
+                  </button>
+                </div>
+              </div>
+              <p className="lead-text">{analysis.applicationPlan.fitSummary}</p>
+              <div className="quick-action-grid">
+                {analysis.applicationPlan.quickActions.map((action) => (
+                  <div className="quick-action" key={action}>
+                    <span>Next</span>
+                    <strong>{action}</strong>
+                  </div>
+                ))}
+              </div>
+              <div className="application-columns">
+                <div>
+                  <h3>Application checklist</h3>
+                  <div className="task-list">
+                    {analysis.applicationPlan.checklist.map((task) => (
+                      <div className="task-item" key={task.title}>
+                        <span>{task.priority}</span>
+                        <strong>{task.title}</strong>
+                        <p>{task.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h3>Package to prepare</h3>
+                  <ul className="insight-list">
+                    {analysis.applicationPlan.documents.map((document) => (
+                      <li key={document}>{document}</li>
+                    ))}
+                  </ul>
+                  <h3 className="subsection-title">Risk flags</h3>
+                  {analysis.applicationPlan.riskFlags.length ? (
+                    <ul className="insight-list">
+                      {analysis.applicationPlan.riskFlags.map((risk) => (
+                        <li key={risk}>{risk}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="muted">No major application risks detected.</p>
+                  )}
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section className="dashboard-grid">
+            <article className="analysis-card message-card">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Application kit</p>
+                  <h2>Cover letter draft</h2>
+                </div>
+                <button className="ghost-button compact" onClick={copyCoverLetter} type="button">
+                  {coverLetterCopyStatus}
+                </button>
+              </div>
+              <textarea aria-label="Generated cover letter" readOnly value={analysis.applicationPlan.coverLetter} />
+            </article>
+
+            <article className="analysis-card message-card">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Networking</p>
+                  <h2>Recruiter outreach</h2>
+                </div>
+                <button className="ghost-button compact" onClick={copyOutreach} type="button">
+                  {outreachCopyStatus}
+                </button>
+              </div>
+              <textarea aria-label="Generated recruiter outreach message" readOnly value={analysis.applicationPlan.recruiterMessage} />
+            </article>
+          </section>
+
+          <section className="dashboard-grid">
+            <article className="analysis-card">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Follow-up agent</p>
+                  <h2>Cadence after applying</h2>
+                </div>
+              </div>
+              <div className="timeline-list">
+                {analysis.applicationPlan.followUpSchedule.map((step) => (
+                  <div className="timeline-step" key={step.timing}>
+                    <span>{step.timing}</span>
+                    <strong>{step.action}</strong>
+                    <p>{step.detail}</p>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <article className="analysis-card">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Application tracker</p>
+                  <h2>Fields to automate</h2>
+                </div>
+              </div>
+              <div className="tracker-field-grid">
+                {analysis.applicationPlan.trackerFields.map((field) => (
+                  <span className="section-pill found" key={field}>
+                    {field}
+                  </span>
+                ))}
+              </div>
+            </article>
           </section>
 
           <section className="dashboard-grid">

@@ -370,7 +370,8 @@ textarea:focus {
 }
 
 .section-checklist,
-.keyword-cloud {
+.keyword-cloud,
+.tracker-field-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -434,6 +435,96 @@ textarea:focus {
   font-weight: 900;
 }
 
+.application-agent-card {
+  overflow: hidden;
+}
+
+.quick-action-grid,
+.application-columns,
+.timeline-list,
+.task-list {
+  display: grid;
+  gap: 14px;
+}
+
+.quick-action-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 20px 0 24px;
+}
+
+.quick-action,
+.task-item,
+.timeline-step {
+  border: 1px solid #dce8f7;
+  border-radius: 18px;
+  padding: 16px;
+  background: #f8fbff;
+}
+
+.quick-action span,
+.task-item span,
+.timeline-step span {
+  display: inline-flex;
+  margin-bottom: 6px;
+  color: #3478f6;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.quick-action strong,
+.task-item strong,
+.timeline-step strong {
+  display: block;
+  color: #14213d;
+}
+
+.task-item p,
+.timeline-step p {
+  margin: 4px 0 0;
+  color: #526983;
+}
+
+.application-columns {
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+}
+
+.application-columns h3 {
+  margin-bottom: 12px;
+  color: #14213d;
+}
+
+.subsection-title {
+  margin-top: 24px;
+}
+
+.message-card {
+  display: flex;
+  min-height: 460px;
+  flex-direction: column;
+}
+
+.message-card textarea {
+  flex: 1;
+  min-height: 350px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.timeline-list {
+  position: relative;
+}
+
+.timeline-step {
+  border-left: 4px solid #3478f6;
+}
+
+.tracker-field-grid {
+  align-content: start;
+}
+
 .muted {
   margin-bottom: 0;
   color: #6c7f98;
@@ -494,7 +585,9 @@ textarea:focus {
   .hero-section,
   .input-grid,
   .keyword-grid,
-  .dashboard-grid {
+  .dashboard-grid,
+  .quick-action-grid,
+  .application-columns {
     grid-template-columns: 1fr;
   }
 

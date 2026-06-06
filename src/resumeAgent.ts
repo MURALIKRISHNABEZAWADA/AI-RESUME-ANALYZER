@@ -15,6 +15,33 @@ export interface ResumeSections {
   certifications: boolean;
 }
 
+export type ApplicationTaskPriority = 'Start now' | 'Next' | 'Optional';
+
+export interface ApplicationTask {
+  title: string;
+  detail: string;
+  priority: ApplicationTaskPriority;
+}
+
+export interface FollowUpStep {
+  timing: string;
+  action: string;
+  detail: string;
+}
+
+export interface ApplicationAutomationPlan {
+  status: string;
+  fitSummary: string;
+  quickActions: string[];
+  checklist: ApplicationTask[];
+  documents: string[];
+  coverLetter: string;
+  recruiterMessage: string;
+  followUpSchedule: FollowUpStep[];
+  trackerFields: string[];
+  riskFlags: string[];
+}
+
 export interface ResumeAnalysis {
   score: number;
   grade: string;
@@ -27,6 +54,7 @@ export interface ResumeAnalysis {
   improvements: string[];
   sections: ResumeSections;
   rewrittenResume: string;
+  applicationPlan: ApplicationAutomationPlan;
   summary: string;
 }
 
@@ -58,6 +86,19 @@ const ACTION_VERBS = [
   'led', 'managed', 'migrated', 'optimized', 'owned', 'reduced', 'shipped', 'streamlined', 'tested',
 ];
 
+const EMPTY_APPLICATION_PLAN: ApplicationAutomationPlan = {
+  status: 'Waiting for resume and job description',
+  fitSummary: 'Add both documents to build an application plan.',
+  quickActions: [],
+  checklist: [],
+  documents: [],
+  coverLetter: '',
+  recruiterMessage: '',
+  followUpSchedule: [],
+  trackerFields: [],
+  riskFlags: [],
+};
+
 const EMPTY_ANALYSIS: ResumeAnalysis = {
   score: 0,
   grade: 'N/A',
@@ -77,6 +118,7 @@ const EMPTY_ANALYSIS: ResumeAnalysis = {
     certifications: false,
   },
   rewrittenResume: '',
+  applicationPlan: EMPTY_APPLICATION_PLAN,
   summary: 'Add both documents to unlock your resume match score.',
 };
 
@@ -325,6 +367,16 @@ const getContactLine = (resume: string) => {
   return lines.length ? lines.join(' | ') : 'Email | Phone | LinkedIn | Portfolio';
 };
 
+const getCompanyName = (jobDescription: string) => {
+  const companyMatch = jobDescription.match(/(?:company|organization|employer)\s*:?\s*([^\n.]+)/i);
+  if (companyMatch?.[1]) {
+    return companyMatch[1].trim().slice(0, 80);
+  }
+
+  const atCompanyMatch = jobDescription.match(/\bat\s+([A-Z][A-Za-z0-9&.,' -]{2,60})/);
+  return atCompanyMatch?.[1]?.trim().replace(/[.,;:]$/, '') ?? 'the company';
+};
+
 const extractExistingBullets = (resume: string) =>
   resume
     .split('\n')
@@ -365,6 +417,206 @@ const buildResumeRewrite = (
     : ['- Add one more measurable accomplishment that directly matches the job description.'];
 
   return `${name}\n${contactLine}\n\nPROFESSIONAL SUMMARY\n${roleTitle}-focused professional with experience aligned to ${roleKeywords.slice(0, 5).join(', ') || 'the target role'}. Brings a track record of delivering practical outcomes, collaborating across teams, and communicating work clearly. Seeking to apply relevant strengths to the responsibilities described in the job posting.\n\nCORE SKILLS\n${topSkills}\n\nPROFESSIONAL EXPERIENCE\nCurrent or Most Relevant Role | Company | Dates\n${experienceBullets.join('\n')}\n${targetedBullets.join('\n')}\n\nPROJECTS OR SELECTED ACHIEVEMENTS\n- Add a role-relevant project that uses ${roleKeywords.slice(0, 3).join(', ') || 'the most important job keywords'}.\n- Add measurable impact and tools used so recruiters can quickly connect your work to the job description.\n\nEDUCATION\nDegree or Certification | Institution | Year\n\nATS FORMATTING NOTES\n- Keep this resume in a single-column layout with standard headings.\n- Use plain text bullets and avoid tables, images, icons, headers, footers, and text boxes.\n- Replace every placeholder with accurate details from your real experience before applying.`;
+};
+
+const getApplicationStatus = (score: number, atsReadiness: number, missingKeywords: string[]) => {
+  if (score >= 82 && atsReadiness >= 75 && missingKeywords.length <= 6) {
+    return 'Ready to apply after a final proofread';
+  }
+
+  if (score >= 62) {
+    return 'Tailor the application package before submitting';
+  }
+
+  return 'Improve alignment before applying';
+};
+
+const buildApplicationChecklist = (
+  score: number,
+  atsReadiness: number,
+  missingKeywords: string[],
+  atsIssues: AtsIssue[],
+): ApplicationTask[] => {
+  const checklist: ApplicationTask[] = [
+    {
+      title: 'Save the job posting',
+      detail: 'Capture the job title, company, application URL, recruiter name, deadline, and compensation details before applying.',
+      priority: 'Start now',
+    },
+    {
+      title: 'Submit the tailored resume',
+      detail: 'Use the ATS-friendly draft, then replace placeholders with verified accomplishments and truthful details.',
+      priority: score >= 70 ? 'Start now' : 'Next',
+    },
+    {
+      title: 'Log the application',
+      detail: 'Create a tracker row with the source, submitted materials, follow-up owner, and next action.',
+      priority: 'Start now',
+    },
+  ];
+
+  if (missingKeywords.length) {
+    checklist.splice(1, 0, {
+      title: 'Close keyword gaps',
+      detail: `Add truthful evidence for ${missingKeywords.slice(0, 5).map(titleCase).join(', ')} before submitting.`,
+      priority: 'Start now',
+    });
+  }
+
+  if (atsReadiness < 75 || atsIssues.length) {
+    checklist.push({
+      title: 'Fix parser risks',
+      detail: atsIssues[0]?.detail ?? 'Keep the resume single-column, plain text, and easy for ATS systems to parse.',
+      priority: atsReadiness < 65 ? 'Start now' : 'Next',
+    });
+  }
+
+  checklist.push(
+    {
+      title: 'Prepare outreach',
+      detail: 'Send the recruiter or hiring manager message after submitting so the application is easy to find.',
+      priority: 'Next',
+    },
+    {
+      title: 'Schedule follow-ups',
+      detail: 'Add reminders for the follow-up cadence so every submitted application has a next step.',
+      priority: 'Optional',
+    },
+  );
+
+  return checklist;
+};
+
+const buildCoverLetter = (
+  resume: string,
+  jobDescription: string,
+  matchedKeywords: string[],
+  missingKeywords: string[],
+) => {
+  const name = getCandidateName(resume);
+  const roleTitle = getRoleTitle(jobDescription);
+  const companyName = getCompanyName(jobDescription);
+  const strengths = matchedKeywords.slice(0, 5).map(titleCase);
+  const gaps = missingKeywords.slice(0, 3).map(titleCase);
+  const evidence = extractExistingBullets(resume).slice(0, 2);
+
+  return [
+    `Dear ${companyName === 'the company' ? 'Hiring Team' : `${companyName} Hiring Team`},`,
+    '',
+    `I am excited to apply for the ${roleTitle} role at ${companyName}. My background aligns with ${strengths.join(', ') || 'the responsibilities in the job description'}, and I am ready to bring practical execution, clear communication, and measurable impact to the team.`,
+    '',
+    evidence.length
+      ? `Relevant examples include ${evidence.map((bullet) => bullet.replace(/\.$/, '')).join('; ')}.`
+      : 'In my most relevant work, I have delivered projects, collaborated with cross-functional partners, and translated requirements into outcomes that match the needs of this role.',
+    gaps.length
+      ? `Before submitting, I will add accurate examples that demonstrate ${gaps.join(', ')} where those skills are part of my real experience.`
+      : 'The resume package already reflects the strongest role-specific keywords from the posting.',
+    '',
+    `Thank you for considering my application. I would welcome the opportunity to discuss how my experience can help ${companyName} succeed in this role.`,
+    '',
+    `Sincerely,\n${name}`,
+  ].join('\n');
+};
+
+const buildRecruiterMessage = (resume: string, jobDescription: string, matchedKeywords: string[]) => {
+  const name = getCandidateName(resume);
+  const roleTitle = getRoleTitle(jobDescription);
+  const companyName = getCompanyName(jobDescription);
+  const strongestMatch = matchedKeywords.slice(0, 3).map(titleCase).join(', ') || 'the core requirements';
+
+  return `Hi [Recruiter Name], I just applied for the ${roleTitle} role at ${companyName}. My experience aligns with ${strongestMatch}, and I would appreciate being considered for the position. If helpful, I can share more context on the projects most relevant to this role.\n\nThank you,\n${name}`;
+};
+
+const buildDocuments = (score: number, missingKeywords: string[]) => {
+  const documents = [
+    'Tailored ATS resume',
+    'Role-specific cover letter',
+    'Recruiter or hiring manager outreach note',
+    'Application tracker row',
+  ];
+
+  if (score < 70 || missingKeywords.length > 6) {
+    documents.unshift('Keyword gap review notes');
+  }
+
+  return documents;
+};
+
+const buildRiskFlags = (score: number, missingKeywords: string[], atsIssues: AtsIssue[]) => {
+  const risks: string[] = [];
+  if (score < 60) {
+    risks.push('Match score is low enough that applying now may underperform without deeper resume tailoring.');
+  }
+  if (missingKeywords.length > 8) {
+    risks.push('Several important job-description keywords are not represented in the resume yet.');
+  }
+  atsIssues.slice(0, 2).forEach((issue) => risks.push(issue.detail));
+  return unique(risks);
+};
+
+const buildApplicationAutomationPlan = (
+  resume: string,
+  jobDescription: string,
+  score: number,
+  keywordCoverage: number,
+  atsReadiness: number,
+  matchedKeywords: string[],
+  missingKeywords: string[],
+  atsIssues: AtsIssue[],
+): ApplicationAutomationPlan => {
+  const roleTitle = getRoleTitle(jobDescription);
+  const companyName = getCompanyName(jobDescription);
+  const status = getApplicationStatus(score, atsReadiness, missingKeywords);
+  const topMatches = matchedKeywords.slice(0, 4).map(titleCase);
+
+  return {
+    status,
+    fitSummary: `${roleTitle} at ${companyName}: ${keywordCoverage}% keyword coverage, ${atsReadiness}% ATS readiness, and ${topMatches.length ? `strength in ${topMatches.join(', ')}` : 'limited confirmed keyword overlap'}.`,
+    quickActions: [
+      missingKeywords.length ? `Add evidence for ${titleCase(missingKeywords[0])}` : 'Proofread the tailored resume',
+      atsIssues[0]?.title ? `Resolve: ${atsIssues[0].title}` : 'Submit with the ATS-safe resume draft',
+      'Send recruiter outreach after submitting',
+    ],
+    checklist: buildApplicationChecklist(score, atsReadiness, missingKeywords, atsIssues),
+    documents: buildDocuments(score, missingKeywords),
+    coverLetter: buildCoverLetter(resume, jobDescription, matchedKeywords, missingKeywords),
+    recruiterMessage: buildRecruiterMessage(resume, jobDescription, matchedKeywords),
+    followUpSchedule: [
+      {
+        timing: 'Submission day',
+        action: 'Apply and record proof',
+        detail: 'Save the confirmation number, application URL, resume version, and outreach contact.',
+      },
+      {
+        timing: 'After 2 business days',
+        action: 'Send a light touchpoint',
+        detail: 'If a recruiter is known, send the concise message and reference the exact role title.',
+      },
+      {
+        timing: 'After 5 business days',
+        action: 'Follow up with new value',
+        detail: 'Share one role-relevant project, portfolio link, or accomplishment not obvious from the resume.',
+      },
+      {
+        timing: 'After 10 business days',
+        action: 'Close or continue',
+        detail: 'If there is no response, mark the application as cooling and prioritize higher-signal roles.',
+      },
+    ],
+    trackerFields: [
+      'Company',
+      'Role',
+      'Application URL',
+      'Resume version',
+      'Cover letter version',
+      'Date submitted',
+      'Recruiter contact',
+      'Next follow-up',
+      'Status',
+      'Notes',
+    ],
+    riskFlags: buildRiskFlags(score, missingKeywords, atsIssues),
+  };
 };
 
 const getStrengths = (
@@ -440,6 +692,16 @@ export const analyzeResume = (resume: string, jobDescription: string): ResumeAna
     improvements: getImprovements(missingKeywords, atsIssues, cleanResume),
     sections,
     rewrittenResume: buildResumeRewrite(cleanResume, cleanJobDescription, matchedKeywords, missingKeywords),
+    applicationPlan: buildApplicationAutomationPlan(
+      cleanResume,
+      cleanJobDescription,
+      score,
+      keywordCoverage,
+      atsReadiness,
+      matchedKeywords,
+      missingKeywords,
+      atsIssues,
+    ),
     summary:
       score >= 80
         ? 'Your resume is well aligned. Polish the missing keywords and keep the ATS-safe structure.'
