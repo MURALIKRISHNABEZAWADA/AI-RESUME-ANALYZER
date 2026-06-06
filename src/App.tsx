@@ -63,16 +63,7 @@ function EmptyState() {
   );
 }
 
-const copyTextToClipboard = async (text: string) => {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return;
-    }
-  } catch {
-    // Some browser automation contexts reject the async clipboard API even on localhost.
-  }
-
+const copyTextWithFallback = (text: string) => {
   const fallbackInput = document.createElement('textarea');
   fallbackInput.value = text;
   fallbackInput.setAttribute('readonly', '');
@@ -82,6 +73,15 @@ const copyTextToClipboard = async (text: string) => {
   fallbackInput.select();
   document.execCommand('copy');
   document.body.removeChild(fallbackInput);
+};
+
+const copyTextToClipboard = (text: string) => {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => copyTextWithFallback(text));
+    return;
+  }
+
+  copyTextWithFallback(text);
 };
 
 const buildApplicationKitText = (analysis: ReturnType<typeof analyzeResume>) => {
@@ -160,32 +160,32 @@ function App() {
     reader.readAsText(file);
   };
 
-  const copyRewrite = async () => {
+  const copyRewrite = () => {
     if (!analysis.rewrittenResume) {
       return;
     }
 
-    await copyTextToClipboard(analysis.rewrittenResume);
+    copyTextToClipboard(analysis.rewrittenResume);
     setCopyStatus('Copied');
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
 
-  const copyCoverLetter = async () => {
+  const copyCoverLetter = () => {
     if (!analysis.applicationPlan.coverLetter) {
       return;
     }
 
-    await copyTextToClipboard(analysis.applicationPlan.coverLetter);
+    copyTextToClipboard(analysis.applicationPlan.coverLetter);
     setCoverLetterCopyStatus('Copied');
     window.setTimeout(() => setCoverLetterCopyStatus('Copy cover letter'), 1800);
   };
 
-  const copyOutreach = async () => {
+  const copyOutreach = () => {
     if (!analysis.applicationPlan.recruiterMessage) {
       return;
     }
 
-    await copyTextToClipboard(analysis.applicationPlan.recruiterMessage);
+    copyTextToClipboard(analysis.applicationPlan.recruiterMessage);
     setOutreachCopyStatus('Copied');
     window.setTimeout(() => setOutreachCopyStatus('Copy outreach'), 1800);
   };
