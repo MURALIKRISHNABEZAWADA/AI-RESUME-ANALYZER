@@ -63,6 +63,27 @@ function EmptyState() {
   );
 }
 
+const copyTextToClipboard = async (text: string) => {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+  } catch {
+    // Some browser automation contexts reject the async clipboard API even on localhost.
+  }
+
+  const fallbackInput = document.createElement('textarea');
+  fallbackInput.value = text;
+  fallbackInput.setAttribute('readonly', '');
+  fallbackInput.style.left = '-9999px';
+  fallbackInput.style.position = 'fixed';
+  document.body.appendChild(fallbackInput);
+  fallbackInput.select();
+  document.execCommand('copy');
+  document.body.removeChild(fallbackInput);
+};
+
 const buildApplicationKitText = (analysis: ReturnType<typeof analyzeResume>) => {
   const plan = analysis.applicationPlan;
 
@@ -144,7 +165,7 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
+    await copyTextToClipboard(analysis.rewrittenResume);
     setCopyStatus('Copied');
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
@@ -154,7 +175,7 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.applicationPlan.coverLetter);
+    await copyTextToClipboard(analysis.applicationPlan.coverLetter);
     setCoverLetterCopyStatus('Copied');
     window.setTimeout(() => setCoverLetterCopyStatus('Copy cover letter'), 1800);
   };
@@ -164,7 +185,7 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.applicationPlan.recruiterMessage);
+    await copyTextToClipboard(analysis.applicationPlan.recruiterMessage);
     setOutreachCopyStatus('Copied');
     window.setTimeout(() => setOutreachCopyStatus('Copy outreach'), 1800);
   };
