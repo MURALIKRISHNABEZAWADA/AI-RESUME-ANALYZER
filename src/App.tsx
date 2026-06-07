@@ -67,7 +67,12 @@ function EmptyState() {
 async function copyTextToClipboard(text: string) {
   try {
     if (navigator.clipboard?.writeText && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
+      await Promise.race([
+        navigator.clipboard.writeText(text),
+        new Promise((_, reject) => {
+          window.setTimeout(() => reject(new Error('Clipboard write timed out.')), 1000);
+        }),
+      ]);
       return true;
     }
   } catch {
@@ -140,7 +145,7 @@ function App() {
 
     const copied = await copyTextToClipboard(analysis.rewrittenResume);
     setCopyStatus(copied ? 'Copied' : 'Copy failed');
-    window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
+    window.setTimeout(() => setCopyStatus('Copy resume'), 3500);
   };
 
   const downloadRewrite = () => {
@@ -162,9 +167,10 @@ function App() {
       return;
     }
 
+    setApplicationCopyStatus('Copying...');
     const copied = await copyTextToClipboard(applicationPlan.packetText);
     setApplicationCopyStatus(copied ? 'Copied' : 'Copy failed');
-    window.setTimeout(() => setApplicationCopyStatus('Copy packet'), 1800);
+    window.setTimeout(() => setApplicationCopyStatus('Copy packet'), 3500);
   };
 
   const downloadApplicationPacket = () => {
