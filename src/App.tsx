@@ -1,4 +1,5 @@
 import { ChangeEvent, useMemo, useState } from 'react';
+import { buildJobApplicationPlan } from './jobApplicationAgent';
 import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
 
 const sectionLabels = {
@@ -67,19 +68,26 @@ function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [copyStatus, setCopyStatus] = useState('Copy resume');
+  const [applicationCopyStatus, setApplicationCopyStatus] = useState('Copy packet');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
+  const applicationPlan = useMemo(
+    () => buildJobApplicationPlan(resume, jobDescription, analysis),
+    [resume, jobDescription, analysis],
+  );
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
 
   const loadSample = () => {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
     setCopyStatus('Copy resume');
+    setApplicationCopyStatus('Copy packet');
   };
 
   const resetDashboard = () => {
     setResume('');
     setJobDescription('');
     setCopyStatus('Copy resume');
+    setApplicationCopyStatus('Copy packet');
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -92,6 +100,7 @@ function App() {
     reader.onload = () => {
       setResume(String(reader.result ?? ''));
       setCopyStatus('Copy resume');
+      setApplicationCopyStatus('Copy packet');
     };
     reader.readAsText(file);
   };
@@ -116,6 +125,30 @@ function App() {
     const link = document.createElement('a');
     link.href = url;
     link.download = 'ats-friendly-resume.txt';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const copyApplicationPacket = async () => {
+    if (!applicationPlan.packetText) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(applicationPlan.packetText);
+    setApplicationCopyStatus('Copied');
+    window.setTimeout(() => setApplicationCopyStatus('Copy packet'), 1800);
+  };
+
+  const downloadApplicationPacket = () => {
+    if (!applicationPlan.packetText) {
+      return;
+    }
+
+    const blob = new Blob([applicationPlan.packetText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'job-application-automation-packet.txt';
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -285,6 +318,131 @@ function App() {
                 </div>
               </div>
               <textarea aria-label="ATS-friendly rewritten resume" readOnly value={analysis.rewrittenResume} />
+            </article>
+          </section>
+
+          <section className="application-agent-section" aria-label="Job application automation agent">
+            <article className="analysis-card wide-card application-agent-card">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Job application automation agent</p>
+                  <h2>Application command center</h2>
+                </div>
+                <div className="button-row">
+                  <span className="status-pill">
+                    {applicationPlan.readinessScore}/100 {applicationPlan.readinessLabel}
+                  </span>
+                  <button className="ghost-button compact" onClick={copyApplicationPacket} type="button">
+                    {applicationCopyStatus}
+                  </button>
+                  <button className="primary-button compact" onClick={downloadApplicationPacket} type="button">
+                    Download packet
+                  </button>
+                </div>
+              </div>
+              <p className="lead-text">{applicationPlan.applicationSummary}</p>
+              <div className="agent-summary-grid">
+                <MetricCard label="Role" value={applicationPlan.roleTitle} helper="Detected from job description" />
+                <MetricCard label="Company" value={applicationPlan.companyName} helper="Detected or placeholder" />
+                <MetricCard label="Ready state" value={applicationPlan.readinessLabel} helper="Submit-prep guidance" />
+              </div>
+            </article>
+
+            <div className="application-grid">
+              <article className="analysis-card">
+                <div className="panel-heading">
+                  <h2>Priority actions</h2>
+                </div>
+                <ol className="insight-list numbered">
+                  {applicationPlan.priorityActions.map((action) => (
+                    <li key={action}>{action}</li>
+                  ))}
+                </ol>
+              </article>
+
+              <article className="analysis-card">
+                <div className="panel-heading">
+                  <h2>Submission checklist</h2>
+                </div>
+                <ul className="insight-list">
+                  {applicationPlan.applicationChecklist.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </article>
+            </div>
+
+            <div className="application-grid">
+              <article className="analysis-card generated-material-card">
+                <div className="panel-heading">
+                  <h2>Generated cover letter</h2>
+                </div>
+                <textarea aria-label="Generated cover letter" readOnly value={applicationPlan.coverLetter} />
+              </article>
+
+              <article className="analysis-card generated-material-card">
+                <div className="panel-heading">
+                  <h2>Recruiter outreach message</h2>
+                </div>
+                <textarea aria-label="Generated recruiter outreach message" readOnly value={applicationPlan.recruiterMessage} />
+              </article>
+            </div>
+
+            <div className="application-grid three-column">
+              <article className="analysis-card">
+                <div className="panel-heading">
+                  <h2>Answer bank</h2>
+                </div>
+                <div className="answer-bank">
+                  {applicationPlan.answerBank.map((answer) => (
+                    <div className="answer-card" key={answer.question}>
+                      <strong>{answer.question}</strong>
+                      <p>{answer.answer}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="analysis-card">
+                <div className="panel-heading">
+                  <h2>Follow-up schedule</h2>
+                </div>
+                <div className="timeline-list">
+                  {applicationPlan.followUpSchedule.map((item) => (
+                    <div className="timeline-item" key={item.timing}>
+                      <span>{item.timing}</span>
+                      <p>{item.action}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="analysis-card">
+                <div className="panel-heading">
+                  <h2>Tracker fields</h2>
+                </div>
+                <div className="tracker-list">
+                  {applicationPlan.trackerFields.map((field) => (
+                    <div className="tracker-row" key={field.label}>
+                      <span>{field.label}</span>
+                      <strong>{field.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </div>
+
+            <article className="analysis-card wide-card">
+              <div className="panel-heading">
+                <h2>Automation risk flags</h2>
+              </div>
+              <div className="risk-flag-list">
+                {applicationPlan.riskFlags.map((flag) => (
+                  <span className="risk-flag" key={flag}>
+                    {flag}
+                  </span>
+                ))}
+              </div>
             </article>
           </section>
         </>
