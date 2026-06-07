@@ -64,6 +64,34 @@ function EmptyState() {
   );
 }
 
+async function copyTextToClipboard(text: string) {
+  try {
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall through to the textarea-based copy path for restricted browser contexts.
+  }
+
+  const textArea = document.createElement('textarea');
+  textArea.value = text;
+  textArea.setAttribute('readonly', '');
+  textArea.style.position = 'fixed';
+  textArea.style.top = '0';
+  textArea.style.left = '0';
+  textArea.style.opacity = '0';
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  try {
+    return document.execCommand('copy');
+  } finally {
+    document.body.removeChild(textArea);
+  }
+}
+
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
@@ -110,8 +138,8 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
-    setCopyStatus('Copied');
+    const copied = await copyTextToClipboard(analysis.rewrittenResume);
+    setCopyStatus(copied ? 'Copied' : 'Copy failed');
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
 
@@ -134,8 +162,8 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(applicationPlan.packetText);
-    setApplicationCopyStatus('Copied');
+    const copied = await copyTextToClipboard(applicationPlan.packetText);
+    setApplicationCopyStatus(copied ? 'Copied' : 'Copy failed');
     window.setTimeout(() => setApplicationCopyStatus('Copy packet'), 1800);
   };
 
