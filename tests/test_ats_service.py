@@ -9,6 +9,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from service.app import ATSRequestHandler
+from service.application_agent import generate_application_packet
 from service.ats_service import optimize_resume
 
 
@@ -87,7 +88,49 @@ class AtsServiceTests(unittest.TestCase):
 
         self.assertEqual(error.exception.code, 400)
 
-    def _post_json(self, url: str, payload: dict[str, str]) -> dict[str, object]:
+    def test_application_agent_generates_packet(self) -> None:
+        packet = generate_application_packet(
+            master_resume=SAMPLE_RESUME,
+            job_description=SAMPLE_JOB_DESCRIPTION,
+            company_name="BrightApps Labs",
+            job_url="https://careers.example.com/frontend-engineer",
+            profile_notes="Authorized to work in the United States without sponsorship. Available for remote roles.",
+        )
+
+        self.assertTrue(packet["application_id"].startswith("APP-"))
+        self.assertEqual(packet["company_name"], "BrightApps Labs")
+        self.assertEqual(packet["role_title"], "Frontend Engineer")
+        self.assertGreater(packet["readiness_score"], 50)
+        self.assertIn("cover_letter", packet)
+        self.assertIn("human-reviewed", packet["automation_boundary"])
+        self.assertTrue(any(item["question"] == "Work authorization / sponsorship" for item in packet["answer_bank"]))
+        self.assertTrue(any("official application portal" in step for step in packet["portal_steps"]))
+
+    def test_http_service_accepts_application_agent_request(self) -> None:
+        with ThreadingHTTPServer(("127.0.0.1", 0), ATSRequestHandler) as server:
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                response = self._post_json(
+                    f"http://127.0.0.1:{server.server_port}/application-agent",
+                    {
+                        "master_resume": SAMPLE_RESUME,
+                        "job_description": SAMPLE_JOB_DESCRIPTION,
+                        "company_name": "BrightApps Labs",
+                        "job_url": "https://careers.example.com/frontend-engineer",
+                        "profile_notes": "Authorized to work in the United States without sponsorship.",
+                    },
+                )
+            finally:
+                server.shutdown()
+                thread.join(timeout=5)
+
+        self.assertEqual(response["company_name"], "BrightApps Labs")
+        self.assertEqual(response["resume_optimization"]["pdf_base64"], "")
+        self.assertIn("answer_bank", response)
+        self.assertIn("checklist", response)
+
+    def _post_json(self, url: str, payload: dict[str, object]) -> dict[str, object]:
         request = Request(
             url,
             data=json.dumps(payload).encode("utf-8"),

@@ -8,6 +8,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
+from service.application_agent import generate_application_packet
 from service.ats_service import optimize_resume
 
 
@@ -27,18 +28,27 @@ class ATSRequestHandler(BaseHTTPRequestHandler):
         self._send_response(HTTPStatus.NOT_FOUND, {"error": "Not found"})
 
     def do_POST(self) -> None:
-        if self.path != "/optimize":
+        if self.path not in {"/optimize", "/application-agent"}:
             self._send_response(HTTPStatus.NOT_FOUND, {"error": "Not found"})
             return
 
         try:
             payload = self._read_json()
-            result = optimize_resume(
-                master_resume=str(payload.get("master_resume", "")),
-                job_description=str(payload.get("job_description", "")),
-                include_pdf=bool(payload.get("include_pdf", True)),
-                keyword_limit=int(payload.get("keyword_limit", 32)),
-            )
+            if self.path == "/application-agent":
+                result = generate_application_packet(
+                    master_resume=str(payload.get("master_resume", "")),
+                    job_description=str(payload.get("job_description", "")),
+                    company_name=str(payload.get("company_name", "")),
+                    job_url=str(payload.get("job_url", "")),
+                    profile_notes=str(payload.get("profile_notes", "")),
+                )
+            else:
+                result = optimize_resume(
+                    master_resume=str(payload.get("master_resume", "")),
+                    job_description=str(payload.get("job_description", "")),
+                    include_pdf=bool(payload.get("include_pdf", True)),
+                    keyword_limit=int(payload.get("keyword_limit", 32)),
+                )
         except ValueError as error:
             self._send_response(HTTPStatus.BAD_REQUEST, {"error": str(error)})
             return

@@ -47,6 +47,8 @@ button {
 .metric-card,
 .analysis-card,
 .keyword-panel,
+.application-agent-panel,
+.agent-card,
 .empty-state {
   border: 1px solid rgba(96, 132, 181, 0.18);
   box-shadow: 0 24px 70px rgba(29, 78, 137, 0.1);
@@ -232,6 +234,8 @@ h3 {
 .input-card,
 .analysis-card,
 .keyword-panel,
+.application-agent-panel,
+.agent-card,
 .empty-state {
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.9);
@@ -239,6 +243,10 @@ h3 {
 
 .input-card {
   padding: 24px;
+}
+
+.application-details-card {
+  grid-column: 1 / -1;
 }
 
 .card-title-row,
@@ -261,6 +269,44 @@ h3 {
   opacity: 0;
 }
 
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.field-label {
+  display: grid;
+  gap: 8px;
+  color: #405775;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.field-label input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #d6e2f1;
+  border-radius: 16px;
+  padding: 0 16px;
+  outline: none;
+  background: #f8fbff;
+  color: #172b4d;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.field-label input:focus {
+  border-color: #3478f6;
+  box-shadow: 0 0 0 4px rgba(52, 120, 246, 0.12);
+}
+
+.stacked {
+  margin-top: 4px;
+}
+
 textarea {
   width: 100%;
   min-height: 320px;
@@ -279,6 +325,10 @@ textarea {
 textarea:focus {
   border-color: #3478f6;
   box-shadow: 0 0 0 4px rgba(52, 120, 246, 0.12);
+}
+
+.profile-notes {
+  min-height: 150px;
 }
 
 .empty-state {
@@ -311,6 +361,158 @@ textarea:focus {
 
 .metrics-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.application-agent-panel {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 24px;
+  padding: 24px;
+}
+
+.agent-summary-grid,
+.agent-workflow-grid,
+.agent-assets-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.agent-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.agent-summary-grid article {
+  border: 1px solid #dce8f7;
+  border-radius: 20px;
+  padding: 18px;
+  background: linear-gradient(180deg, #f8fbff, #ffffff);
+}
+
+.agent-summary-grid span {
+  color: #6381a3;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.agent-summary-grid strong {
+  display: block;
+  margin: 6px 0;
+  color: #14213d;
+  font-size: 1.45rem;
+  letter-spacing: -0.04em;
+}
+
+.agent-summary-grid p {
+  margin-bottom: 0;
+  color: #5b708f;
+}
+
+.agent-workflow-grid,
+.agent-assets-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.agent-card {
+  padding: 20px;
+}
+
+.agent-card h3 {
+  margin-bottom: 14px;
+  color: #14213d;
+}
+
+.checklist-list,
+.portal-steps,
+.risk-list {
+  margin: 0;
+  color: #405775;
+}
+
+.checklist-list {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.check-item {
+  border-left: 4px solid #f59e0b;
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: #fffaf0;
+}
+
+.check-item.done {
+  border-left-color: #27c08a;
+  background: #f0fdf7;
+}
+
+.check-item span {
+  color: #6381a3;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.check-item strong {
+  display: block;
+  color: #14213d;
+}
+
+.check-item p,
+.portal-steps li,
+.risk-list li {
+  color: #526983;
+}
+
+.check-item p {
+  margin: 4px 0 0;
+}
+
+.portal-steps,
+.risk-list {
+  display: grid;
+  gap: 10px;
+  padding-left: 22px;
+}
+
+.asset-textarea {
+  min-height: 310px;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.recruiter-textarea {
+  min-height: 150px;
+}
+
+.answer-bank {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.answer-item {
+  border: 1px solid #dce8f7;
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: #f8fbff;
+}
+
+.answer-item dt {
+  margin-bottom: 6px;
+  color: #14213d;
+  font-weight: 900;
+}
+
+.answer-item dd {
+  margin: 0;
+  color: #526983;
+}
+
+.risk-card {
+  background: #fffaf0;
 }
 
 .metric-card {
@@ -493,8 +695,12 @@ textarea:focus {
 @media (max-width: 1120px) {
   .hero-section,
   .input-grid,
+  .form-grid,
   .keyword-grid,
-  .dashboard-grid {
+  .dashboard-grid,
+  .agent-summary-grid,
+  .agent-workflow-grid,
+  .agent-assets-grid {
     grid-template-columns: 1fr;
   }
 
@@ -513,6 +719,8 @@ textarea:focus {
   .input-card,
   .analysis-card,
   .keyword-panel,
+  .application-agent-panel,
+  .agent-card,
   .empty-state {
     border-radius: 22px;
   }
@@ -522,6 +730,8 @@ textarea:focus {
   .input-card,
   .analysis-card,
   .keyword-panel,
+  .application-agent-panel,
+  .agent-card,
   .empty-state {
     padding: 22px;
   }

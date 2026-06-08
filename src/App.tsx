@@ -1,4 +1,5 @@
 import { ChangeEvent, useMemo, useState } from 'react';
+import { buildApplicationPacketText, buildApplicationPlan } from './applicationAgent';
 import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
 
 const sectionLabels = {
@@ -66,20 +67,45 @@ function EmptyState() {
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [jobUrl, setJobUrl] = useState('');
+  const [profileNotes, setProfileNotes] = useState('');
   const [copyStatus, setCopyStatus] = useState('Copy resume');
+  const [packetCopyStatus, setPacketCopyStatus] = useState('Copy packet');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
+  const applicationPlan = useMemo(
+    () =>
+      hasAnalysis
+        ? buildApplicationPlan(resume, jobDescription, analysis, {
+            companyName,
+            jobUrl,
+            profileNotes,
+          })
+        : null,
+    [analysis, companyName, hasAnalysis, jobDescription, jobUrl, profileNotes, resume],
+  );
 
   const loadSample = () => {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
+    setCompanyName('BrightApps Labs');
+    setJobUrl('https://careers.example.com/frontend-engineer');
+    setProfileNotes(
+      'Authorized to work in the United States without sponsorship. Available for remote or hybrid roles. Open to discussing compensation based on scope and level.',
+    );
     setCopyStatus('Copy resume');
+    setPacketCopyStatus('Copy packet');
   };
 
   const resetDashboard = () => {
     setResume('');
     setJobDescription('');
+    setCompanyName('');
+    setJobUrl('');
+    setProfileNotes('');
     setCopyStatus('Copy resume');
+    setPacketCopyStatus('Copy packet');
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -106,6 +132,16 @@ function App() {
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
 
+  const copyApplicationPacket = async () => {
+    if (!applicationPlan) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(buildApplicationPacketText(applicationPlan));
+    setPacketCopyStatus('Copied');
+    window.setTimeout(() => setPacketCopyStatus('Copy packet'), 1800);
+  };
+
   const downloadRewrite = () => {
     if (!analysis.rewrittenResume) {
       return;
@@ -124,11 +160,11 @@ function App() {
     <main className="app-shell">
       <section className="hero-section">
         <div className="hero-copy">
-          <p className="eyebrow">AI Resume Analyzer</p>
-          <h1>Score your resume against any job description.</h1>
+          <p className="eyebrow">AI Resume + Application Agent</p>
+          <h1>Score your resume and launch a job application copilot.</h1>
           <p>
-            Upload or paste your resume, add the JD, and get an instant match score, ATS readiness report, missing
-            keywords, and a clean resume rewrite draft tailored to the role.
+            Upload or paste your resume, add the JD, and get an instant match score, ATS readiness report, tailored
+            resume draft, cover letter, answer bank, and human-reviewed application workflow.
           </p>
           <div className="hero-actions">
             <button className="primary-button" onClick={loadSample} type="button">
@@ -185,6 +221,44 @@ function App() {
             value={jobDescription}
           />
         </article>
+
+        <article className="input-card application-details-card">
+          <div className="card-title-row">
+            <div>
+              <p className="eyebrow">Step 3</p>
+              <h2>Application details</h2>
+            </div>
+          </div>
+          <div className="form-grid">
+            <label className="field-label">
+              Company
+              <input
+                onChange={(event) => setCompanyName(event.target.value)}
+                placeholder="Target company"
+                type="text"
+                value={companyName}
+              />
+            </label>
+            <label className="field-label">
+              Job URL
+              <input
+                onChange={(event) => setJobUrl(event.target.value)}
+                placeholder="https://company.com/careers/job-id"
+                type="url"
+                value={jobUrl}
+              />
+            </label>
+          </div>
+          <label className="field-label stacked">
+            Profile notes for portal answers
+            <textarea
+              className="profile-notes"
+              onChange={(event) => setProfileNotes(event.target.value)}
+              placeholder="Work authorization, sponsorship, location, availability, compensation expectations, and any reusable application notes..."
+              value={profileNotes}
+            />
+          </label>
+        </article>
       </section>
 
       {!hasAnalysis ? (
@@ -197,6 +271,99 @@ function App() {
             <MetricCard label="ATS readiness" value={`${analysis.atsReadiness}%`} helper="Formatting and parser safety" />
             <MetricCard label="Missing keywords" value={`${analysis.missingKeywords.length}`} helper="Terms to add truthfully" />
           </section>
+
+          {applicationPlan ? (
+            <section className="application-agent-panel" aria-label="Job application automation agent">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Application automation agent</p>
+                  <h2>Human-reviewed application packet</h2>
+                </div>
+                <button className="primary-button compact" onClick={copyApplicationPacket} type="button">
+                  {packetCopyStatus}
+                </button>
+              </div>
+
+              <div className="agent-summary-grid">
+                <article>
+                  <span>Readiness</span>
+                  <strong>{applicationPlan.readinessScore}/100</strong>
+                  <p>{applicationPlan.status}</p>
+                </article>
+                <article>
+                  <span>Target</span>
+                  <strong>{applicationPlan.companyName}</strong>
+                  <p>{applicationPlan.roleTitle}</p>
+                </article>
+                <article>
+                  <span>Application ID</span>
+                  <strong>{applicationPlan.applicationId}</strong>
+                  <p>Use this label in your tracker.</p>
+                </article>
+              </div>
+
+              <p className="lead-text">{applicationPlan.fitSummary}</p>
+
+              <div className="agent-workflow-grid">
+                <article className="agent-card">
+                  <h3>Prep checklist</h3>
+                  <ul className="checklist-list">
+                    {applicationPlan.checklist.map((item) => (
+                      <li className={item.done ? 'check-item done' : 'check-item'} key={item.title}>
+                        <span>{item.done ? 'Ready' : 'Review'}</span>
+                        <strong>{item.title}</strong>
+                        <p>{item.detail}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+
+                <article className="agent-card">
+                  <h3>Portal steps</h3>
+                  <ol className="portal-steps">
+                    {applicationPlan.portalSteps.map((step) => (
+                      <li key={step}>{step}</li>
+                    ))}
+                  </ol>
+                  <p className="muted">
+                    This agent prepares materials and workflow steps; submit only after you verify every portal field.
+                  </p>
+                </article>
+              </div>
+
+              <div className="agent-assets-grid">
+                <article className="agent-card">
+                  <h3>Cover letter draft</h3>
+                  <textarea className="asset-textarea" readOnly value={applicationPlan.coverLetter} />
+                </article>
+                <article className="agent-card">
+                  <h3>Recruiter message</h3>
+                  <textarea className="asset-textarea recruiter-textarea" readOnly value={applicationPlan.recruiterMessage} />
+                </article>
+              </div>
+
+              <article className="agent-card">
+                <h3>Common application answer bank</h3>
+                <dl className="answer-bank">
+                  {applicationPlan.answerBank.map((item) => (
+                    <div className="answer-item" key={item.question}>
+                      <dt>{item.question}</dt>
+                      <dd>{item.answer}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </article>
+
+              <article className="agent-card risk-card">
+                <h3>Review flags</h3>
+                <ul className="risk-list">
+                  {applicationPlan.riskFlags.map((flag) => (
+                    <li key={flag}>{flag}</li>
+                  ))}
+                </ul>
+              </article>
+            </section>
+          ) : null}
 
           <section className="dashboard-grid">
             <article className="analysis-card wide-card">
