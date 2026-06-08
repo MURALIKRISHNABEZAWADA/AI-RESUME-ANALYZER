@@ -64,6 +64,24 @@ function EmptyState() {
   );
 }
 
+const copyTextToClipboard = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return copied;
+  }
+};
+
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
@@ -127,8 +145,7 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
-    setCopyStatus('Copied');
+    setCopyStatus((await copyTextToClipboard(analysis.rewrittenResume)) ? 'Copied' : 'Copy failed');
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
 
@@ -137,8 +154,7 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(buildApplicationPacketText(applicationPlan));
-    setPacketCopyStatus('Copied');
+    setPacketCopyStatus((await copyTextToClipboard(buildApplicationPacketText(applicationPlan))) ? 'Copied' : 'Copy failed');
     window.setTimeout(() => setPacketCopyStatus('Copy packet'), 1800);
   };
 
