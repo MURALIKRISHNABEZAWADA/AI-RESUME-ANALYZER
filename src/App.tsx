@@ -154,8 +154,9 @@ function App() {
       return;
     }
 
+    setPacketCopyStatus('Copying...');
     setPacketCopyStatus((await copyTextToClipboard(buildApplicationPacketText(applicationPlan))) ? 'Copied' : 'Copy failed');
-    window.setTimeout(() => setPacketCopyStatus('Copy packet'), 1800);
+    window.setTimeout(() => setPacketCopyStatus('Copy packet'), 5000);
   };
 
   const downloadRewrite = () => {
@@ -378,6 +379,12 @@ function App() {
                   ))}
                 </ul>
               </article>
+
+              <div className="agent-footer-actions">
+                <button className="primary-button compact" onClick={copyApplicationPacket} type="button">
+                  {packetCopyStatus}
+                </button>
+              </div>
             </section>
           ) : null}
 
