@@ -228,6 +228,6 @@ def generate_application_packet(
         "checklist": _build_checklist(optimization, profile_notes),
         "portal_steps": portal_steps,
         "risk_flags": _build_risk_flags(optimization, profile_notes, job_url),
-        "automation_boundary": "This agent prepares tailored materials and a portal workflow. It does not auto-submit applications or misrepresent candidate information.",
+        "automation_boundary": "This human-reviewed agent prepares tailored materials and a portal workflow. It does not auto-submit applications or misrepresent candidate information.",
         "resume_optimization": optimization,
     }
