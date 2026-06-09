@@ -8,6 +8,7 @@ from http.server import ThreadingHTTPServer
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from service.application_agent import build_application_package
 from service.app import ATSRequestHandler
 from service.ats_service import optimize_resume
 
@@ -57,6 +58,43 @@ class AtsServiceTests(unittest.TestCase):
         result = optimize_resume(SAMPLE_RESUME, SAMPLE_JOB_DESCRIPTION, include_pdf=False)
         self.assertEqual(result["pdf_base64"], "")
 
+    def test_application_agent_returns_ready_package(self) -> None:
+        result = build_application_package(
+            SAMPLE_RESUME,
+            SAMPLE_JOB_DESCRIPTION,
+            candidate_profile={
+                "full_name": "Alex Morgan",
+                "email": "alex.morgan@email.com",
+                "phone": "555-0184",
+                "location": "Austin, TX",
+                "linkedin": "https://linkedin.com/in/alexmorgan",
+                "work_authorization": "Authorized to work in the United States",
+                "sponsorship": "No sponsorship required",
+            },
+            job_url="https://jobs.example.com/frontend-engineer",
+            company_name="BrightApps",
+            include_pdf=False,
+        )
+
+        self.assertEqual(result["company"], "BrightApps")
+        self.assertEqual(result["role_title"], "Frontend Engineer")
+        self.assertEqual(result["recommendation"], "Apply after quick edits")
+        self.assertEqual(result["missing_profile_fields"], [])
+        self.assertEqual(result["tracker"]["stage"], "prep-needed")
+        self.assertIn("Full name", result["suggested_form_answers"])
+        self.assertIn("Dear BrightApps Hiring Team", result["cover_letter"])
+        self.assertIn("Frontend Engineer", result["recruiter_message"])
+        self.assertEqual(result["optimized_resume"]["pdf_base64"], "")
+
+    def test_application_agent_surfaces_profile_blockers(self) -> None:
+        result = build_application_package(SAMPLE_RESUME, SAMPLE_JOB_DESCRIPTION, include_pdf=False)
+
+        missing_fields = {item["field"] for item in result["missing_profile_fields"]}
+        self.assertIn("full_name", missing_fields)
+        self.assertIn("work_authorization", missing_fields)
+        self.assertEqual(result["tracker"]["stage"], "prep-needed")
+        self.assertTrue(any(item["status"] == "blocked" for item in result["checklist"]))
+
     def test_http_service_accepts_optimize_request(self) -> None:
         with ThreadingHTTPServer(("127.0.0.1", 0), ATSRequestHandler) as server:
             thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -74,6 +112,37 @@ class AtsServiceTests(unittest.TestCase):
         self.assertGreaterEqual(response["keyword_coverage"], 40)
         self.assertTrue(any(keyword["term"] == "react" and keyword["matched"] for keyword in response["ats_keywords"]))
 
+    def test_http_service_accepts_application_package_request(self) -> None:
+        with ThreadingHTTPServer(("127.0.0.1", 0), ATSRequestHandler) as server:
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                response = self._post_json(
+                    f"http://127.0.0.1:{server.server_port}/application-package",
+                    {
+                        "master_resume": SAMPLE_RESUME,
+                        "job_description": SAMPLE_JOB_DESCRIPTION,
+                        "candidate_profile": {
+                            "full_name": "Alex Morgan",
+                            "email": "alex.morgan@email.com",
+                            "phone": "555-0184",
+                            "location": "Austin, TX",
+                            "linkedin": "https://linkedin.com/in/alexmorgan",
+                            "work_authorization": "Authorized to work in the United States",
+                        },
+                        "company_name": "BrightApps",
+                        "include_pdf": False,
+                    },
+                )
+            finally:
+                server.shutdown()
+                thread.join(timeout=5)
+
+        self.assertEqual(response["company"], "BrightApps")
+        self.assertIn("suggested_form_answers", response)
+        self.assertIn("optimized_resume", response)
+        self.assertEqual(response["optimized_resume"]["pdf_base64"], "")
+
     def test_http_service_rejects_missing_inputs(self) -> None:
         with ThreadingHTTPServer(("127.0.0.1", 0), ATSRequestHandler) as server:
             thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -87,7 +156,7 @@ class AtsServiceTests(unittest.TestCase):
 
         self.assertEqual(error.exception.code, 400)
 
-    def _post_json(self, url: str, payload: dict[str, str]) -> dict[str, object]:
+    def _post_json(self, url: str, payload: dict[str, object]) -> dict[str, object]:
         request = Request(
             url,
             data=json.dumps(payload).encode("utf-8"),

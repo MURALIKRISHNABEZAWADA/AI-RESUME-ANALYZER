@@ -241,6 +241,10 @@ h3 {
   padding: 24px;
 }
 
+.application-input-card {
+  grid-column: 1 / -1;
+}
+
 .card-title-row,
 .panel-heading {
   display: flex;
@@ -281,6 +285,42 @@ textarea:focus {
   box-shadow: 0 0 0 4px rgba(52, 120, 246, 0.12);
 }
 
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.field-group {
+  display: grid;
+  gap: 8px;
+}
+
+.field-group span {
+  color: #405775;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.field-group input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #d6e2f1;
+  border-radius: 16px;
+  padding: 0 14px;
+  outline: none;
+  background: #f8fbff;
+  color: #172b4d;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.field-group input:focus {
+  border-color: #3478f6;
+  box-shadow: 0 0 0 4px rgba(52, 120, 246, 0.12);
+}
+
 .empty-state {
   display: grid;
   place-items: center;
@@ -310,7 +350,7 @@ textarea:focus {
 }
 
 .metrics-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
 
 .metric-card {
@@ -490,6 +530,153 @@ textarea:focus {
   line-height: 1.65;
 }
 
+.application-agent-card {
+  display: grid;
+  gap: 22px;
+}
+
+.application-summary-grid,
+.application-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.application-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.application-summary-grid > div,
+.agent-panel {
+  border: 1px solid #d6e2f1;
+  border-radius: 22px;
+  background: #f8fbff;
+}
+
+.application-summary-grid > div {
+  padding: 18px;
+}
+
+.application-summary-grid strong {
+  display: block;
+  margin: 4px 0;
+  color: #14213d;
+  font-size: 1.6rem;
+}
+
+.application-summary-grid p {
+  margin-bottom: 0;
+  color: #526983;
+}
+
+.application-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.agent-panel {
+  padding: 18px;
+}
+
+.compact-heading {
+  margin-bottom: 14px;
+}
+
+.checklist {
+  display: grid;
+  gap: 10px;
+}
+
+.checklist-item {
+  border-left: 4px solid #d6e2f1;
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #ffffff;
+}
+
+.checklist-item.ready {
+  border-left-color: #27c08a;
+}
+
+.checklist-item.needs-work,
+.checklist-item.todo {
+  border-left-color: #f59e0b;
+}
+
+.checklist-item.blocked {
+  border-left-color: #ef4444;
+}
+
+.checklist-item span {
+  color: #6381a3;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.checklist-item strong {
+  display: block;
+  color: #14213d;
+}
+
+.checklist-item p {
+  margin: 4px 0 0;
+  color: #526983;
+}
+
+.answer-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.answer-list div {
+  display: grid;
+  gap: 4px;
+  border-bottom: 1px solid #e2ecf8;
+  padding-bottom: 10px;
+}
+
+.answer-list dt {
+  color: #245ba8;
+  font-weight: 900;
+}
+
+.answer-list dd {
+  margin: 0;
+  color: #405775;
+}
+
+.agent-panel textarea {
+  min-height: 420px;
+  background: #ffffff;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.recruiter-message {
+  border-radius: 16px;
+  padding: 14px;
+  background: #ffffff;
+  color: #405775;
+}
+
+.follow-up-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding-left: 20px;
+  color: #405775;
+}
+
+.follow-up-list li strong {
+  display: block;
+  color: #14213d;
+}
+
+.follow-up-list li span {
+  display: block;
+}
+
 @media (max-width: 1120px) {
   .hero-section,
   .input-grid,
@@ -500,6 +687,12 @@ textarea:focus {
 
   .metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-grid,
+  .application-summary-grid,
+  .application-grid {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -1,4 +1,10 @@
-import { ChangeEvent, useMemo, useState } from 'react';
+import { ChangeEvent, CSSProperties, useMemo, useState } from 'react';
+import {
+  buildApplicationPackage,
+  emptyCandidateProfile,
+  sampleCandidateProfile,
+  type CandidateProfile,
+} from './applicationAgent';
 import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
 
 const sectionLabels = {
@@ -66,20 +72,55 @@ function EmptyState() {
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [jobUrl, setJobUrl] = useState('');
+  const [candidateProfile, setCandidateProfile] = useState<CandidateProfile>(emptyCandidateProfile);
   const [copyStatus, setCopyStatus] = useState('Copy resume');
+  const [coverCopyStatus, setCoverCopyStatus] = useState('Copy cover letter');
+  const [answersCopyStatus, setAnswersCopyStatus] = useState('Copy answers');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
+  const applicationPackage = useMemo(
+    () =>
+      hasAnalysis
+        ? buildApplicationPackage({
+            analysis,
+            candidateProfile,
+            companyName,
+            jobDescription,
+            jobUrl,
+          })
+        : null,
+    [analysis, candidateProfile, companyName, hasAnalysis, jobDescription, jobUrl],
+  );
 
   const loadSample = () => {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
+    setCompanyName('BrightApps');
+    setJobUrl('https://jobs.example.com/frontend-engineer');
+    setCandidateProfile(sampleCandidateProfile);
     setCopyStatus('Copy resume');
+    setCoverCopyStatus('Copy cover letter');
+    setAnswersCopyStatus('Copy answers');
   };
 
   const resetDashboard = () => {
     setResume('');
     setJobDescription('');
+    setCompanyName('');
+    setJobUrl('');
+    setCandidateProfile(emptyCandidateProfile);
     setCopyStatus('Copy resume');
+    setCoverCopyStatus('Copy cover letter');
+    setAnswersCopyStatus('Copy answers');
+  };
+
+  const updateProfile = (field: keyof CandidateProfile, value: string) => {
+    setCandidateProfile((currentProfile) => ({
+      ...currentProfile,
+      [field]: value,
+    }));
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -106,6 +147,29 @@ function App() {
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
 
+  const copyCoverLetter = async () => {
+    if (!applicationPackage) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(applicationPackage.coverLetter);
+    setCoverCopyStatus('Copied');
+    window.setTimeout(() => setCoverCopyStatus('Copy cover letter'), 1800);
+  };
+
+  const copyFormAnswers = async () => {
+    if (!applicationPackage) {
+      return;
+    }
+
+    const answerText = applicationPackage.suggestedFormAnswers
+      .map(([label, value]) => `${label}: ${value}`)
+      .join('\n');
+    await navigator.clipboard.writeText(answerText);
+    setAnswersCopyStatus('Copied');
+    window.setTimeout(() => setAnswersCopyStatus('Copy answers'), 1800);
+  };
+
   const downloadRewrite = () => {
     if (!analysis.rewrittenResume) {
       return;
@@ -124,11 +188,11 @@ function App() {
     <main className="app-shell">
       <section className="hero-section">
         <div className="hero-copy">
-          <p className="eyebrow">AI Resume Analyzer</p>
-          <h1>Score your resume against any job description.</h1>
+          <p className="eyebrow">AI Job Application Agent</p>
+          <h1>Automate your job application prep.</h1>
           <p>
-            Upload or paste your resume, add the JD, and get an instant match score, ATS readiness report, missing
-            keywords, and a clean resume rewrite draft tailored to the role.
+            Upload or paste your resume, add the JD, and get an instant match score, ATS-safe resume draft, application
+            checklist, form answers, cover letter, recruiter message, and follow-up plan.
           </p>
           <div className="hero-actions">
             <button className="primary-button" onClick={loadSample} type="button">
@@ -140,7 +204,7 @@ function App() {
           </div>
         </div>
         <div className="score-hero-card" aria-label="Resume score preview">
-          <div className="score-ring" style={{ '--score': `${analysis.score * 3.6}deg` } as React.CSSProperties}>
+          <div className="score-ring" style={{ '--score': `${analysis.score * 3.6}deg` } as CSSProperties}>
             <span>{hasAnalysis ? analysis.score : 0}</span>
           </div>
           <div>
@@ -185,6 +249,125 @@ function App() {
             value={jobDescription}
           />
         </article>
+
+        <article className="input-card application-input-card">
+          <div className="card-title-row">
+            <div>
+              <p className="eyebrow">Step 3</p>
+              <h2>Application details</h2>
+            </div>
+          </div>
+          <div className="form-grid">
+            <label className="field-group">
+              <span>Company</span>
+              <input
+                onChange={(event) => setCompanyName(event.target.value)}
+                placeholder="Company name"
+                type="text"
+                value={companyName}
+              />
+            </label>
+            <label className="field-group">
+              <span>Job URL</span>
+              <input
+                onChange={(event) => setJobUrl(event.target.value)}
+                placeholder="https://..."
+                type="url"
+                value={jobUrl}
+              />
+            </label>
+            <label className="field-group">
+              <span>Full name</span>
+              <input
+                onChange={(event) => updateProfile('fullName', event.target.value)}
+                placeholder="Your name"
+                type="text"
+                value={candidateProfile.fullName}
+              />
+            </label>
+            <label className="field-group">
+              <span>Email</span>
+              <input
+                onChange={(event) => updateProfile('email', event.target.value)}
+                placeholder="you@example.com"
+                type="email"
+                value={candidateProfile.email}
+              />
+            </label>
+            <label className="field-group">
+              <span>Phone</span>
+              <input
+                onChange={(event) => updateProfile('phone', event.target.value)}
+                placeholder="Phone number"
+                type="tel"
+                value={candidateProfile.phone}
+              />
+            </label>
+            <label className="field-group">
+              <span>Location</span>
+              <input
+                onChange={(event) => updateProfile('location', event.target.value)}
+                placeholder="City, State"
+                type="text"
+                value={candidateProfile.location}
+              />
+            </label>
+            <label className="field-group">
+              <span>LinkedIn</span>
+              <input
+                onChange={(event) => updateProfile('linkedin', event.target.value)}
+                placeholder="https://linkedin.com/in/..."
+                type="url"
+                value={candidateProfile.linkedin}
+              />
+            </label>
+            <label className="field-group">
+              <span>Portfolio</span>
+              <input
+                onChange={(event) => updateProfile('portfolio', event.target.value)}
+                placeholder="https://github.com/..."
+                type="url"
+                value={candidateProfile.portfolio}
+              />
+            </label>
+            <label className="field-group">
+              <span>Work authorization</span>
+              <input
+                onChange={(event) => updateProfile('workAuthorization', event.target.value)}
+                placeholder="Authorized to work in..."
+                type="text"
+                value={candidateProfile.workAuthorization}
+              />
+            </label>
+            <label className="field-group">
+              <span>Sponsorship</span>
+              <input
+                onChange={(event) => updateProfile('sponsorship', event.target.value)}
+                placeholder="No sponsorship required"
+                type="text"
+                value={candidateProfile.sponsorship}
+              />
+            </label>
+            <label className="field-group">
+              <span>Salary expectations</span>
+              <input
+                onChange={(event) => updateProfile('salaryExpectation', event.target.value)}
+                placeholder="Flexible based on role scope"
+                type="text"
+                value={candidateProfile.salaryExpectation}
+              />
+            </label>
+            <label className="field-group">
+              <span>Notice period</span>
+              <input
+                onChange={(event) => updateProfile('noticePeriod', event.target.value)}
+                placeholder="Two weeks"
+                type="text"
+                value={candidateProfile.noticePeriod}
+              />
+            </label>
+          </div>
+        </article>
       </section>
 
       {!hasAnalysis ? (
@@ -196,6 +379,11 @@ function App() {
             <MetricCard label="Keyword coverage" value={`${analysis.keywordCoverage}%`} helper="JD terms found in resume" />
             <MetricCard label="ATS readiness" value={`${analysis.atsReadiness}%`} helper="Formatting and parser safety" />
             <MetricCard label="Missing keywords" value={`${analysis.missingKeywords.length}`} helper="Terms to add truthfully" />
+            <MetricCard
+              label="Application readiness"
+              value={`${applicationPackage?.readinessScore ?? 0}/100`}
+              helper={applicationPackage?.recommendation ?? 'Complete the inputs'}
+            />
           </section>
 
           <section className="dashboard-grid">
@@ -287,6 +475,103 @@ function App() {
               <textarea aria-label="ATS-friendly rewritten resume" readOnly value={analysis.rewrittenResume} />
             </article>
           </section>
+
+          {applicationPackage ? (
+            <section className="dashboard-grid" aria-label="Job application automation package">
+              <article className="analysis-card wide-card application-agent-card">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">Application automation agent</p>
+                    <h2>
+                      {applicationPackage.roleTitle} at {applicationPackage.company}
+                    </h2>
+                  </div>
+                  <span className="status-pill">{applicationPackage.recommendation}</span>
+                </div>
+
+                <div className="application-summary-grid">
+                  <div>
+                    <span className="score-label">Readiness</span>
+                    <strong>{applicationPackage.readinessScore}/100</strong>
+                    <p>{applicationPackage.tracker.nextAction}</p>
+                  </div>
+                  <div>
+                    <span className="score-label">Tracker stage</span>
+                    <strong>{applicationPackage.tracker.stage}</strong>
+                    <p>{applicationPackage.tracker.resumeVersion}</p>
+                  </div>
+                  <div>
+                    <span className="score-label">Profile gaps</span>
+                    <strong>{applicationPackage.missingProfileFields.length}</strong>
+                    <p>
+                      {applicationPackage.missingProfileFields.length
+                        ? applicationPackage.missingProfileFields.join(', ')
+                        : 'Candidate profile is ready.'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="application-grid">
+                  <div className="agent-panel">
+                    <div className="panel-heading compact-heading">
+                      <h3>Apply checklist</h3>
+                    </div>
+                    <div className="checklist">
+                      {applicationPackage.checklist.map((item) => (
+                        <div className={`checklist-item ${item.status}`} key={item.task}>
+                          <span>{item.status}</span>
+                          <strong>{item.task}</strong>
+                          <p>{item.detail}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="agent-panel">
+                    <div className="panel-heading compact-heading">
+                      <h3>Application form answers</h3>
+                      <button className="ghost-button compact" onClick={copyFormAnswers} type="button">
+                        {answersCopyStatus}
+                      </button>
+                    </div>
+                    <dl className="answer-list">
+                      {applicationPackage.suggestedFormAnswers.map(([label, value]) => (
+                        <div key={label}>
+                          <dt>{label}</dt>
+                          <dd>{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+
+                  <div className="agent-panel">
+                    <div className="panel-heading compact-heading">
+                      <h3>Cover letter draft</h3>
+                      <button className="ghost-button compact" onClick={copyCoverLetter} type="button">
+                        {coverCopyStatus}
+                      </button>
+                    </div>
+                    <textarea aria-label="Generated cover letter" readOnly value={applicationPackage.coverLetter} />
+                  </div>
+
+                  <div className="agent-panel">
+                    <div className="panel-heading compact-heading">
+                      <h3>Recruiter message and follow-up</h3>
+                    </div>
+                    <p className="recruiter-message">{applicationPackage.recruiterMessage}</p>
+                    <ol className="follow-up-list">
+                      {applicationPackage.followUpPlan.map((item) => (
+                        <li key={item.when}>
+                          <strong>{item.when}</strong>
+                          <span>{item.action}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+              </article>
+            </section>
+          ) : null}
         </>
       )}
     </main>
