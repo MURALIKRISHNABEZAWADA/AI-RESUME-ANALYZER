@@ -69,6 +69,31 @@ function EmptyState() {
   );
 }
 
+const writeClipboardText = async (value: string) => {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+  } catch {
+    // Fall back to a temporary textarea below when the Clipboard API is blocked.
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  document.body.removeChild(textarea);
+
+  if (!copied) {
+    throw new Error('Clipboard copy failed');
+  }
+};
+
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
@@ -142,7 +167,7 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
+    await writeClipboardText(analysis.rewrittenResume);
     setCopyStatus('Copied');
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
@@ -152,7 +177,7 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(applicationPackage.coverLetter);
+    await writeClipboardText(applicationPackage.coverLetter);
     setCoverCopyStatus('Copied');
     window.setTimeout(() => setCoverCopyStatus('Copy cover letter'), 1800);
   };
@@ -165,7 +190,7 @@ function App() {
     const answerText = applicationPackage.suggestedFormAnswers
       .map(([label, value]) => `${label}: ${value}`)
       .join('\n');
-    await navigator.clipboard.writeText(answerText);
+    await writeClipboardText(answerText);
     setAnswersCopyStatus('Copied');
     window.setTimeout(() => setAnswersCopyStatus('Copy answers'), 1800);
   };
