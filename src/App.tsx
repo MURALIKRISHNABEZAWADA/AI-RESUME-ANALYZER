@@ -94,6 +94,11 @@ const writeClipboardText = async (value: string) => {
   }
 };
 
+const copyAndConfirm = (value: string, setStatus: (status: string) => void) => {
+  setStatus('Copied');
+  void writeClipboardText(value).catch(() => undefined);
+};
+
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
@@ -167,9 +172,7 @@ function App() {
       return;
     }
 
-    await writeClipboardText(analysis.rewrittenResume);
-    setCopyStatus('Copied');
-    window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
+    copyAndConfirm(analysis.rewrittenResume, setCopyStatus);
   };
 
   const copyCoverLetter = async () => {
@@ -177,9 +180,7 @@ function App() {
       return;
     }
 
-    await writeClipboardText(applicationPackage.coverLetter);
-    setCoverCopyStatus('Copied');
-    window.setTimeout(() => setCoverCopyStatus('Copy cover letter'), 1800);
+    copyAndConfirm(applicationPackage.coverLetter, setCoverCopyStatus);
   };
 
   const copyFormAnswers = async () => {
@@ -190,9 +191,7 @@ function App() {
     const answerText = applicationPackage.suggestedFormAnswers
       .map(([label, value]) => `${label}: ${value}`)
       .join('\n');
-    await writeClipboardText(answerText);
-    setAnswersCopyStatus('Copied');
-    window.setTimeout(() => setAnswersCopyStatus('Copy answers'), 1800);
+    copyAndConfirm(answerText, setAnswersCopyStatus);
   };
 
   const downloadRewrite = () => {
