@@ -1,4 +1,5 @@
 import { ChangeEvent, useMemo, useState } from 'react';
+import { buildJobApplicationPlan } from './jobApplicationAgent';
 import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
 
 const sectionLabels = {
@@ -63,23 +64,56 @@ function EmptyState() {
   );
 }
 
+const writeToClipboard = async (content: string) => {
+  try {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(content);
+      return true;
+    }
+  } catch {
+    // Fall through to the textarea copy path for browsers that block Clipboard API calls.
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = content;
+  textarea.setAttribute('readonly', '');
+  textarea.style.left = '-9999px';
+  textarea.style.position = 'fixed';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    return document.execCommand('copy');
+  } finally {
+    document.body.removeChild(textarea);
+  }
+};
+
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [copyStatus, setCopyStatus] = useState('Copy resume');
+  const [applicationCopyStatus, setApplicationCopyStatus] = useState('Copy kit');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
+  const applicationPlan = useMemo(
+    () => buildJobApplicationPlan(resume, jobDescription, analysis),
+    [analysis, jobDescription, resume],
+  );
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
 
   const loadSample = () => {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
     setCopyStatus('Copy resume');
+    setApplicationCopyStatus('Copy kit');
   };
 
   const resetDashboard = () => {
     setResume('');
     setJobDescription('');
     setCopyStatus('Copy resume');
+    setApplicationCopyStatus('Copy kit');
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -92,6 +126,7 @@ function App() {
     reader.onload = () => {
       setResume(String(reader.result ?? ''));
       setCopyStatus('Copy resume');
+      setApplicationCopyStatus('Copy kit');
     };
     reader.readAsText(file);
   };
@@ -101,24 +136,38 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
-    setCopyStatus('Copied');
+    const copied = await writeToClipboard(analysis.rewrittenResume);
+    setCopyStatus(copied ? 'Copied' : 'Copy unavailable');
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
 
-  const downloadRewrite = () => {
-    if (!analysis.rewrittenResume) {
+  const copyApplicationKit = async () => {
+    if (!applicationPlan.applicationKit) {
       return;
     }
 
-    const blob = new Blob([analysis.rewrittenResume], { type: 'text/plain;charset=utf-8' });
+    const copied = await writeToClipboard(applicationPlan.applicationKit);
+    setApplicationCopyStatus(copied ? 'Copied' : 'Copy unavailable');
+    window.setTimeout(() => setApplicationCopyStatus('Copy kit'), 1800);
+  };
+
+  const downloadText = (content: string, filename: string, type = 'text/plain;charset=utf-8') => {
+    if (!content) {
+      return;
+    }
+
+    const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'ats-friendly-resume.txt';
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
   };
+
+  const downloadRewrite = () => downloadText(analysis.rewrittenResume, 'ats-friendly-resume.txt');
+  const downloadApplicationKit = () => downloadText(applicationPlan.applicationKit, 'job-application-automation-kit.md', 'text/markdown;charset=utf-8');
+  const downloadTracker = () => downloadText(applicationPlan.trackerCsv, 'job-application-tracker.csv', 'text/csv;charset=utf-8');
 
   return (
     <main className="app-shell">
@@ -165,7 +214,10 @@ function App() {
           </div>
           <textarea
             aria-label="Resume text"
-            onChange={(event) => setResume(event.target.value)}
+            onChange={(event) => {
+              setResume(event.target.value);
+              setApplicationCopyStatus('Copy kit');
+            }}
             placeholder="Paste your resume text here..."
             value={resume}
           />
@@ -180,7 +232,10 @@ function App() {
           </div>
           <textarea
             aria-label="Job description text"
-            onChange={(event) => setJobDescription(event.target.value)}
+            onChange={(event) => {
+              setJobDescription(event.target.value);
+              setApplicationCopyStatus('Copy kit');
+            }}
             placeholder="Paste the full job description here..."
             value={jobDescription}
           />
@@ -286,6 +341,109 @@ function App() {
               </div>
               <textarea aria-label="ATS-friendly rewritten resume" readOnly value={analysis.rewrittenResume} />
             </article>
+          </section>
+
+          <section className="analysis-card automation-card wide-card" aria-label="Job application automation agent">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Job application automation agent</p>
+                <h2>Application workflow and outreach kit</h2>
+              </div>
+              <div className="button-row">
+                <button className="ghost-button compact" onClick={copyApplicationKit} type="button">
+                  {applicationCopyStatus}
+                </button>
+                <button className="primary-button compact" onClick={downloadApplicationKit} type="button">
+                  Download kit
+                </button>
+                <button className="ghost-button compact" onClick={downloadTracker} type="button">
+                  Tracker CSV
+                </button>
+              </div>
+            </div>
+
+            <div className="automation-summary">
+              <div className="readiness-card">
+                <span>Application readiness</span>
+                <strong>{applicationPlan.readinessScore}/100</strong>
+                <p>{applicationPlan.fitLabel}</p>
+              </div>
+              <div>
+                <p className="lead-text">{applicationPlan.summary}</p>
+                <div className="target-role-grid">
+                  <span>
+                    <strong>Role</strong>
+                    {applicationPlan.targetRole}
+                  </span>
+                  <span>
+                    <strong>Company</strong>
+                    {applicationPlan.targetCompany}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="workflow-list">
+              {applicationPlan.workflow.map((task) => (
+                <article className={`workflow-step ${task.priority}`} key={`${task.stage}-${task.title}`}>
+                  <div>
+                    <span>{task.stage}</span>
+                    <strong>{task.title}</strong>
+                  </div>
+                  <p>{task.detail}</p>
+                  <p className="automation-prompt">{task.automationPrompt}</p>
+                  <small>Done when: {task.doneWhen}</small>
+                </article>
+              ))}
+            </div>
+
+            <div className="kit-grid">
+              <article className="artifact-preview">
+                <div className="panel-heading">
+                  <h3>Cover letter draft</h3>
+                </div>
+                <textarea aria-label="Generated cover letter draft" readOnly value={applicationPlan.coverLetter} />
+              </article>
+
+              <article className="artifact-preview">
+                <div className="panel-heading">
+                  <h3>Outreach and follow-up</h3>
+                </div>
+                <div className="text-preview">
+                  <strong>Recruiter message</strong>
+                  <p>{applicationPlan.recruiterMessage}</p>
+                  <strong>Follow-up email</strong>
+                  <pre>{applicationPlan.followUpEmail}</pre>
+                </div>
+              </article>
+            </div>
+
+            <div className="kit-grid">
+              <article className="artifact-preview">
+                <div className="panel-heading">
+                  <h3>Screening answer starters</h3>
+                </div>
+                <ul className="insight-list">
+                  {applicationPlan.screeningAnswers.map((answer) => (
+                    <li key={answer}>{answer}</li>
+                  ))}
+                </ul>
+              </article>
+
+              <article className="artifact-preview">
+                <div className="panel-heading">
+                  <h3>Application tracker row</h3>
+                </div>
+                <div className="tracker-table">
+                  {applicationPlan.trackerRows.map((row) => (
+                    <div key={row.field}>
+                      <strong>{row.field}</strong>
+                      <span>{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </div>
           </section>
         </>
       )}
