@@ -64,6 +64,32 @@ function EmptyState() {
   );
 }
 
+const writeToClipboard = async (content: string) => {
+  try {
+    if (navigator.clipboard) {
+      await navigator.clipboard.writeText(content);
+      return true;
+    }
+  } catch {
+    // Fall through to the textarea copy path for browsers that block Clipboard API calls.
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = content;
+  textarea.setAttribute('readonly', '');
+  textarea.style.left = '-9999px';
+  textarea.style.position = 'fixed';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  try {
+    return document.execCommand('copy');
+  } finally {
+    document.body.removeChild(textarea);
+  }
+};
+
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
@@ -110,8 +136,8 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
-    setCopyStatus('Copied');
+    const copied = await writeToClipboard(analysis.rewrittenResume);
+    setCopyStatus(copied ? 'Copied' : 'Copy unavailable');
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
 
@@ -120,8 +146,8 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(applicationPlan.applicationKit);
-    setApplicationCopyStatus('Copied');
+    const copied = await writeToClipboard(applicationPlan.applicationKit);
+    setApplicationCopyStatus(copied ? 'Copied' : 'Copy unavailable');
     window.setTimeout(() => setApplicationCopyStatus('Copy kit'), 1800);
   };
 
