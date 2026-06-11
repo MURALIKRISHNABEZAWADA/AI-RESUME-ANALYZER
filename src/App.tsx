@@ -244,13 +244,38 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const writeClipboardText = async (content: string) => {
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(content);
+        return true;
+      }
+    } catch {
+      // Fall back to the legacy copy command below when browser permissions block the Clipboard API.
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = content;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+
+    try {
+      return document.execCommand('copy');
+    } finally {
+      document.body.removeChild(textArea);
+    }
+  };
+
   const copyRewrite = async () => {
     if (!analysis.rewrittenResume) {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
-    setCopyStatus('Copied');
+    const copied = await writeClipboardText(analysis.rewrittenResume);
+    setCopyStatus(copied ? 'Copied' : 'Copy failed');
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
 
@@ -267,8 +292,8 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(applicationPlan.applicationKit);
-    setKitCopyStatus('Copied');
+    const copied = await writeClipboardText(applicationPlan.applicationKit);
+    setKitCopyStatus(copied ? 'Copied' : 'Copy failed');
     window.setTimeout(() => setKitCopyStatus('Copy kit'), 1800);
   };
 
