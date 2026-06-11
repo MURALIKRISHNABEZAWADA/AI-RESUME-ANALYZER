@@ -245,13 +245,22 @@ function App() {
   };
 
   const writeClipboardText = async (content: string) => {
-    try {
-      if (navigator.clipboard?.writeText && window.isSecureContext) {
-        await navigator.clipboard.writeText(content);
-        return true;
+    const clipboardTimeout = new Promise<false>((resolve) => {
+      window.setTimeout(() => resolve(false), 600);
+    });
+
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      try {
+        const copied = await Promise.race([
+          navigator.clipboard.writeText(content).then(() => true),
+          clipboardTimeout,
+        ]);
+        if (copied) {
+          return true;
+        }
+      } catch {
+        // Fall back to the legacy copy command below when browser permissions block the Clipboard API.
       }
-    } catch {
-      // Fall back to the legacy copy command below when browser permissions block the Clipboard API.
     }
 
     const textArea = document.createElement('textarea');
@@ -259,14 +268,23 @@ function App() {
     textArea.setAttribute('readonly', '');
     textArea.style.position = 'fixed';
     textArea.style.left = '-9999px';
+    textArea.style.top = '0';
     document.body.appendChild(textArea);
+    textArea.focus();
     textArea.select();
 
     try {
-      return document.execCommand('copy');
+      const copied = document.execCommand('copy');
+      if (copied) {
+        return true;
+      }
+    } catch {
+      // Return false below so the button can show an explicit failure state.
     } finally {
       document.body.removeChild(textArea);
     }
+
+    return false;
   };
 
   const copyRewrite = async () => {
@@ -274,6 +292,7 @@ function App() {
       return;
     }
 
+    setCopyStatus('Copying...');
     const copied = await writeClipboardText(analysis.rewrittenResume);
     setCopyStatus(copied ? 'Copied' : 'Copy failed');
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
@@ -292,6 +311,7 @@ function App() {
       return;
     }
 
+    setKitCopyStatus('Copying...');
     const copied = await writeClipboardText(applicationPlan.applicationKit);
     setKitCopyStatus(copied ? 'Copied' : 'Copy failed');
     window.setTimeout(() => setKitCopyStatus('Copy kit'), 1800);
