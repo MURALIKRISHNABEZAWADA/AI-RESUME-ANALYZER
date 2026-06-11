@@ -108,7 +108,7 @@ function JobApplicationAgentPanel({
           </div>
         </div>
         <div className="button-row">
-          <button className="primary-button compact" onClick={onCopyKit} type="button">
+          <button className="primary-button compact agent-copy-button" onClick={onCopyKit} type="button">
             {kitCopyStatus}
           </button>
           <button className="ghost-button compact" onClick={onDownloadKit} type="button">

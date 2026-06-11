@@ -503,9 +503,18 @@ textarea:focus {
   font-size: 1.35rem;
 }
 
+.agent-score-row > div:last-child {
+  min-width: 0;
+}
+
 .agent-score-row p {
   margin-bottom: 0;
   color: #526983;
+  overflow-wrap: anywhere;
+}
+
+.agent-copy-button {
+  min-width: 116px;
 }
 
 .agent-step-list {
