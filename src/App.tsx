@@ -17,6 +17,8 @@ const severityLabel = {
   minor: 'Low priority',
 };
 
+const COPY_FEEDBACK_DURATION_MS = 4200;
+
 function MetricCard({ label, value, helper }: { label: string; value: string; helper: string }) {
   return (
     <article className="metric-card">
@@ -295,7 +297,7 @@ function App() {
     setCopyStatus('Copying...');
     const copied = await writeClipboardText(analysis.rewrittenResume);
     setCopyStatus(copied ? 'Copied' : 'Copy failed');
-    window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
+    window.setTimeout(() => setCopyStatus('Copy resume'), COPY_FEEDBACK_DURATION_MS);
   };
 
   const downloadRewrite = () => {
@@ -314,7 +316,7 @@ function App() {
     setKitCopyStatus('Copying...');
     const copied = await writeClipboardText(applicationPlan.applicationKit);
     setKitCopyStatus(copied ? 'Copied' : 'Copy failed');
-    window.setTimeout(() => setKitCopyStatus('Copy kit'), 1800);
+    window.setTimeout(() => setKitCopyStatus('Copy kit'), COPY_FEEDBACK_DURATION_MS);
   };
 
   const downloadApplicationKit = () => {
