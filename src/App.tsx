@@ -1,4 +1,5 @@
 import { ChangeEvent, useMemo, useState } from 'react';
+import { buildApplicationAutomationPlan } from './applicationAgent';
 import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
 
 const sectionLabels = {
@@ -48,6 +49,15 @@ function KeywordList({ title, keywords, tone }: { title: string; keywords: strin
   );
 }
 
+function GeneratedDocument({ title, value }: { title: string; value: string }) {
+  return (
+    <article className="generated-doc">
+      <h3>{title}</h3>
+      <textarea aria-label={title} readOnly value={value} />
+    </article>
+  );
+}
+
 function EmptyState() {
   return (
     <section className="empty-state">
@@ -56,7 +66,7 @@ function EmptyState() {
         <h2>Paste a resume and job description to generate your match score.</h2>
         <p>
           The dashboard compares JD keywords, ATS formatting, resume structure, and measurable impact. The rewrite
-          agent then creates an ATS-friendly draft you can refine before applying.
+          agent then creates an ATS-friendly draft and application packet you can refine before applying.
         </p>
       </div>
     </section>
@@ -67,19 +77,26 @@ function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [copyStatus, setCopyStatus] = useState('Copy resume');
+  const [packetCopyStatus, setPacketCopyStatus] = useState('Copy packet');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
+  const applicationPlan = useMemo(
+    () => buildApplicationAutomationPlan(resume, jobDescription, analysis),
+    [analysis, jobDescription, resume],
+  );
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
 
   const loadSample = () => {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
     setCopyStatus('Copy resume');
+    setPacketCopyStatus('Copy packet');
   };
 
   const resetDashboard = () => {
     setResume('');
     setJobDescription('');
     setCopyStatus('Copy resume');
+    setPacketCopyStatus('Copy packet');
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -92,6 +109,7 @@ function App() {
     reader.onload = () => {
       setResume(String(reader.result ?? ''));
       setCopyStatus('Copy resume');
+      setPacketCopyStatus('Copy packet');
     };
     reader.readAsText(file);
   };
@@ -120,15 +138,39 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
+  const copyApplicationPacket = async () => {
+    if (!applicationPlan.applicationPacket) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(applicationPlan.applicationPacket);
+    setPacketCopyStatus('Copied');
+    window.setTimeout(() => setPacketCopyStatus('Copy packet'), 1800);
+  };
+
+  const downloadApplicationPacket = () => {
+    if (!applicationPlan.applicationPacket) {
+      return;
+    }
+
+    const blob = new Blob([applicationPlan.applicationPacket], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'job-application-packet.txt';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <main className="app-shell">
       <section className="hero-section">
         <div className="hero-copy">
           <p className="eyebrow">AI Resume Analyzer</p>
-          <h1>Score your resume against any job description.</h1>
+          <h1>Score your resume and build a job application packet.</h1>
           <p>
             Upload or paste your resume, add the JD, and get an instant match score, ATS readiness report, missing
-            keywords, and a clean resume rewrite draft tailored to the role.
+            keywords, a clean resume rewrite draft, and a guided application automation plan tailored to the role.
           </p>
           <div className="hero-actions">
             <button className="primary-button" onClick={loadSample} type="button">
@@ -165,7 +207,11 @@ function App() {
           </div>
           <textarea
             aria-label="Resume text"
-            onChange={(event) => setResume(event.target.value)}
+            onChange={(event) => {
+              setResume(event.target.value);
+              setCopyStatus('Copy resume');
+              setPacketCopyStatus('Copy packet');
+            }}
             placeholder="Paste your resume text here..."
             value={resume}
           />
@@ -180,7 +226,11 @@ function App() {
           </div>
           <textarea
             aria-label="Job description text"
-            onChange={(event) => setJobDescription(event.target.value)}
+            onChange={(event) => {
+              setJobDescription(event.target.value);
+              setCopyStatus('Copy resume');
+              setPacketCopyStatus('Copy packet');
+            }}
             placeholder="Paste the full job description here..."
             value={jobDescription}
           />
@@ -243,6 +293,86 @@ function App() {
           <section className="keyword-grid" aria-label="Keyword comparison">
             <KeywordList title="Matched JD keywords" keywords={analysis.matchedKeywords} tone="good" />
             <KeywordList title="Missing JD keywords" keywords={analysis.missingKeywords} tone="warning" />
+          </section>
+
+          <section className="application-agent-card" aria-label="Job application automation agent">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Job application automation agent</p>
+                <h2>Application packet</h2>
+              </div>
+              <div className="button-row">
+                <span className="status-pill">{applicationPlan.readiness}</span>
+                <button className="ghost-button compact" onClick={copyApplicationPacket} type="button">
+                  {packetCopyStatus}
+                </button>
+                <button className="primary-button compact" onClick={downloadApplicationPacket} type="button">
+                  Download packet
+                </button>
+              </div>
+            </div>
+            <p className="lead-text">{applicationPlan.summary}</p>
+
+            <div className="application-overview-grid">
+              <article className="prep-card score-prep-card">
+                <span>Apply readiness</span>
+                <strong>{applicationPlan.applyReadinessScore}/100</strong>
+                <p>
+                  {applicationPlan.roleTitle} at {applicationPlan.companyName}
+                </p>
+              </article>
+
+              <article className="prep-card">
+                <h3>Tracker row</h3>
+                <dl className="tracker-grid">
+                  {applicationPlan.trackerFields.map((field) => (
+                    <div key={field.label}>
+                      <dt>{field.label}</dt>
+                      <dd>{field.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </article>
+            </div>
+
+            <div className="application-agent-grid">
+              <article className="prep-card">
+                <h3>Priority queue</h3>
+                <ol className="task-list">
+                  {applicationPlan.priorityTasks.map((task) => (
+                    <li key={`${task.stage}-${task.title}`}>
+                      <span>{task.stage}</span>
+                      <strong>{task.title}</strong>
+                      <p>{task.detail}</p>
+                      <em>Done when: {task.doneWhen}</em>
+                    </li>
+                  ))}
+                </ol>
+              </article>
+
+              <article className="prep-card">
+                <h3>Follow-up sequence</h3>
+                <div className="timeline-list">
+                  {applicationPlan.followUpSchedule.map((step) => (
+                    <div key={step.timing}>
+                      <span>{step.timing}</span>
+                      <p>{step.action}</p>
+                    </div>
+                  ))}
+                </div>
+                <h3>Submission checklist</h3>
+                <div className="checklist-grid">
+                  {applicationPlan.checklist.map((item) => (
+                    <span key={item}>{item}</span>
+                  ))}
+                </div>
+              </article>
+            </div>
+
+            <div className="document-grid">
+              <GeneratedDocument title="Cover letter draft" value={applicationPlan.coverLetter} />
+              <GeneratedDocument title="Recruiter outreach message" value={applicationPlan.recruiterMessage} />
+            </div>
           </section>
 
           <section className="dashboard-grid">
