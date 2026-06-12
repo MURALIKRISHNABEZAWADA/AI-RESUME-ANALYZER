@@ -332,7 +332,7 @@ function App() {
               </div>
               <div className="button-row">
                 <span className="status-pill">{applicationPlan.readiness}</span>
-                <button className="ghost-button compact" onClick={copyApplicationPacket} type="button">
+                <button aria-live="polite" className="ghost-button compact" onClick={copyApplicationPacket} type="button">
                   {packetCopyStatus}
                 </button>
                 <button className="primary-button compact" onClick={downloadApplicationPacket} type="button">
@@ -401,6 +401,18 @@ function App() {
             <div className="document-grid">
               <GeneratedDocument title="Cover letter draft" value={applicationPlan.coverLetter} />
               <GeneratedDocument title="Recruiter outreach message" value={applicationPlan.recruiterMessage} />
+            </div>
+
+            <div className="application-action-row" aria-label="Application packet actions">
+              <p className="muted">Ready to apply? Copy or download the full packet after reviewing these drafts.</p>
+              <div className="button-row">
+                <button aria-live="polite" className="ghost-button compact" onClick={copyApplicationPacket} type="button">
+                  {packetCopyStatus}
+                </button>
+                <button className="primary-button compact" onClick={downloadApplicationPacket} type="button">
+                  Download packet
+                </button>
+              </div>
             </div>
           </section>
 

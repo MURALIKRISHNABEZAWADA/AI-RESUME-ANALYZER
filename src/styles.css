@@ -630,6 +630,22 @@ textarea:focus {
   line-height: 1.6;
 }
 
+.application-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  border: 1px solid #dbe7f7;
+  border-radius: 22px;
+  padding: 16px 18px;
+  background: #ffffff;
+}
+
+.application-action-row p {
+  margin-bottom: 0;
+}
+
 @media (max-width: 1120px) {
   .hero-section,
   .input-grid,
@@ -676,7 +692,8 @@ textarea:focus {
   }
 
   .card-title-row,
-  .panel-heading {
+  .panel-heading,
+  .application-action-row {
     align-items: flex-start;
     flex-direction: column;
   }
