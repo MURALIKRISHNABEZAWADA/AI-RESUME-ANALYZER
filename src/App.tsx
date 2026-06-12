@@ -58,6 +58,25 @@ function GeneratedDocument({ title, value }: { title: string; value: string }) {
   );
 }
 
+const writeTextToClipboard = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    const copied = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return copied;
+  }
+};
+
 function EmptyState() {
   return (
     <section className="empty-state">
@@ -119,8 +138,8 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
-    setCopyStatus('Copied');
+    const copied = await writeTextToClipboard(analysis.rewrittenResume);
+    setCopyStatus(copied ? 'Copied' : 'Copy failed');
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
 
@@ -143,8 +162,8 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(applicationPlan.applicationPacket);
-    setPacketCopyStatus('Copied');
+    const copied = await writeTextToClipboard(applicationPlan.applicationPacket);
+    setPacketCopyStatus(copied ? 'Copied' : 'Copy failed');
     window.setTimeout(() => setPacketCopyStatus('Copy packet'), 1800);
   };
 

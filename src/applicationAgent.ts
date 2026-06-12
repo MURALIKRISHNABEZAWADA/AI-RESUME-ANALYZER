@@ -72,7 +72,7 @@ const extractCompanyName = (jobDescription: string) => {
     return labeledCompany[1].trim().slice(0, 80);
   }
 
-  const atCompany = jobDescription.match(/\b(?:at|with)\s+([A-Z][A-Za-z0-9&.,' -]{2,60})(?:\s+is|\s+are|[,.]|\n|$)/);
+  const atCompany = jobDescription.match(/\b(?:at|with)\s+([A-Z][A-Za-z0-9&.' -]{2,60})(?:\s+(?:is|seeks|hires|needs)|\.|\n|$)/);
   if (atCompany?.[1]) {
     return atCompany[1].trim();
   }
