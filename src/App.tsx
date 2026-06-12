@@ -174,7 +174,9 @@ function App() {
 
     const copied = await writeTextToClipboard(applicationPlan.applicationPacket);
     setPacketCopyStatus(copied ? 'Copied' : 'Copy failed');
-    window.setTimeout(() => setPacketCopyStatus('Copy packet'), 1800);
+    if (!copied) {
+      window.setTimeout(() => setPacketCopyStatus('Copy packet'), 1800);
+    }
   };
 
   const downloadApplicationPacket = () => {
