@@ -46,6 +46,7 @@ button {
 .input-card,
 .metric-card,
 .analysis-card,
+.application-agent-card,
 .keyword-panel,
 .empty-state {
   border: 1px solid rgba(96, 132, 181, 0.18);
@@ -231,6 +232,7 @@ h3 {
 
 .input-card,
 .analysis-card,
+.application-agent-card,
 .keyword-panel,
 .empty-state {
   border-radius: 28px;
@@ -348,6 +350,7 @@ textarea:focus {
 }
 
 .analysis-card,
+.application-agent-card,
 .keyword-panel {
   padding: 24px;
 }
@@ -490,11 +493,167 @@ textarea:focus {
   line-height: 1.65;
 }
 
+.application-agent-card {
+  margin-bottom: 24px;
+}
+
+.application-overview-grid,
+.application-agent-grid,
+.document-grid {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.application-overview-grid {
+  grid-template-columns: minmax(260px, 0.55fr) minmax(0, 1.45fr);
+}
+
+.application-agent-grid,
+.document-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.prep-card,
+.generated-doc {
+  border: 1px solid #dbe7f7;
+  border-radius: 22px;
+  padding: 18px;
+  background: #f8fbff;
+}
+
+.score-prep-card {
+  display: grid;
+  align-content: center;
+}
+
+.score-prep-card span,
+.tracker-grid dt,
+.task-list span,
+.timeline-list span {
+  color: #6381a3;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.score-prep-card strong {
+  display: block;
+  color: #14213d;
+  font-size: 3rem;
+  letter-spacing: -0.06em;
+}
+
+.score-prep-card p,
+.task-list p,
+.timeline-list p,
+.generated-doc h3 {
+  margin-bottom: 0;
+}
+
+.tracker-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 0;
+}
+
+.tracker-grid dd {
+  margin: 2px 0 0;
+  color: #243b5a;
+  font-weight: 800;
+}
+
+.task-list {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0 0;
+  padding-left: 20px;
+}
+
+.task-list li {
+  color: #405775;
+}
+
+.task-list strong {
+  display: block;
+  color: #14213d;
+}
+
+.task-list em {
+  display: block;
+  margin-top: 6px;
+  color: #245ba8;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.timeline-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 20px;
+}
+
+.timeline-list div {
+  border-left: 3px solid #3b82f6;
+  padding-left: 12px;
+}
+
+.checklist-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.checklist-grid span {
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #eaf3ff;
+  color: #245ba8;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.generated-doc {
+  display: flex;
+  min-height: 430px;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.generated-doc textarea {
+  flex: 1;
+  min-height: 340px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.application-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  border: 1px solid #dbe7f7;
+  border-radius: 22px;
+  padding: 16px 18px;
+  background: #ffffff;
+}
+
+.application-action-row p {
+  margin-bottom: 0;
+}
+
 @media (max-width: 1120px) {
   .hero-section,
   .input-grid,
   .keyword-grid,
-  .dashboard-grid {
+  .dashboard-grid,
+  .application-overview-grid,
+  .application-agent-grid,
+  .document-grid {
     grid-template-columns: 1fr;
   }
 
@@ -512,6 +671,7 @@ textarea:focus {
   .score-hero-card,
   .input-card,
   .analysis-card,
+    .application-agent-card,
   .keyword-panel,
   .empty-state {
     border-radius: 22px;
@@ -521,6 +681,7 @@ textarea:focus {
   .score-hero-card,
   .input-card,
   .analysis-card,
+    .application-agent-card,
   .keyword-panel,
   .empty-state {
     padding: 22px;
@@ -531,7 +692,8 @@ textarea:focus {
   }
 
   .card-title-row,
-  .panel-heading {
+  .panel-heading,
+  .application-action-row {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -542,5 +704,9 @@ textarea:focus {
 
   .rewrite-card textarea {
     min-height: 420px;
+  }
+
+  .tracker-grid {
+    grid-template-columns: 1fr;
   }
 }
