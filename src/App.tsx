@@ -59,21 +59,31 @@ function GeneratedDocument({ title, value }: { title: string; value: string }) {
 }
 
 const writeTextToClipboard = async (text: string) => {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.top = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+
   try {
-    await navigator.clipboard.writeText(text);
+    const copied = document.execCommand('copy');
+    if (copied) {
+      return true;
+    }
+  } finally {
+    document.body.removeChild(textarea);
+  }
+
+  try {
+    await Promise.race([
+      navigator.clipboard.writeText(text),
+      new Promise((_, reject) => window.setTimeout(() => reject(new Error('Clipboard timed out')), 300)),
+    ]);
     return true;
   } catch {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', '');
-    textarea.style.position = 'fixed';
-    textarea.style.top = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.select();
-
-    const copied = document.execCommand('copy');
-    document.body.removeChild(textarea);
-    return copied;
+    return false;
   }
 };
 
