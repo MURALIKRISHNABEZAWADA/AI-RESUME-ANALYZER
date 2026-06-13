@@ -1,4 +1,4 @@
-import { ChangeEvent, useMemo, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { createApplicationPlan, type ApplicationPlan, type ApplicationStatus } from './jobApplicationAgent';
 import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
 
@@ -153,6 +153,10 @@ function App() {
     [companyName, hasAnalysis, jobDescription, jobUrl, recruiterName, resume, roleTitle],
   );
 
+  useEffect(() => {
+    setQueueStatus('Queue application');
+  }, [companyName, jobDescription, jobUrl, recruiterName, resume, roleTitle]);
+
   const loadSample = () => {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
@@ -264,7 +268,6 @@ function App() {
       ...currentQueue,
     ]);
     setQueueStatus('Queued');
-    window.setTimeout(() => setQueueStatus('Queue application'), 1800);
   };
 
   const updateQueuedStatus = (id: number, status: ApplicationStatus) => {
