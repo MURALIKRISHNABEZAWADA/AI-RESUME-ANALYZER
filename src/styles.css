@@ -20,6 +20,7 @@ body {
 
 button,
 textarea,
+select,
 input {
   font: inherit;
 }
@@ -47,6 +48,7 @@ button {
 .metric-card,
 .analysis-card,
 .keyword-panel,
+.application-hero-card,
 .empty-state {
   border: 1px solid rgba(96, 132, 181, 0.18);
   box-shadow: 0 24px 70px rgba(29, 78, 137, 0.1);
@@ -232,6 +234,7 @@ h3 {
 .input-card,
 .analysis-card,
 .keyword-panel,
+.application-hero-card,
 .empty-state {
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.9);
@@ -281,6 +284,47 @@ textarea:focus {
   box-shadow: 0 0 0 4px rgba(52, 120, 246, 0.12);
 }
 
+.application-builder {
+  margin-bottom: 24px;
+}
+
+.application-input-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.application-input-grid label,
+.queue-item label {
+  display: grid;
+  gap: 8px;
+  color: #526983;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #d6e2f1;
+  border-radius: 16px;
+  padding: 0 14px;
+  outline: none;
+  background: #f8fbff;
+  color: #172b4d;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+input:focus,
+select:focus {
+  border-color: #3478f6;
+  box-shadow: 0 0 0 4px rgba(52, 120, 246, 0.12);
+}
+
 .empty-state {
   display: grid;
   place-items: center;
@@ -303,7 +347,8 @@ textarea:focus {
 
 .metrics-grid,
 .dashboard-grid,
-.keyword-grid {
+.keyword-grid,
+.application-summary-grid {
   display: grid;
   gap: 24px;
   margin-bottom: 24px;
@@ -343,13 +388,63 @@ textarea:focus {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.application-summary-grid {
+  grid-template-columns: minmax(0, 1.3fr) minmax(360px, 0.7fr);
+}
+
 .wide-card {
   grid-column: 1 / -1;
 }
 
 .analysis-card,
-.keyword-panel {
+.keyword-panel,
+.application-hero-card {
   padding: 24px;
+}
+
+.application-hero-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.35fr);
+  align-items: center;
+  gap: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(39, 192, 138, 0.16), transparent 34%),
+    #ffffff;
+}
+
+.application-hero-card h2 {
+  margin-bottom: 10px;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+}
+
+.application-hero-card p {
+  color: #526983;
+}
+
+.readiness-card {
+  display: grid;
+  gap: 4px;
+  border-radius: 24px;
+  padding: 22px;
+  background: #10233f;
+  color: #ffffff;
+}
+
+.readiness-card span,
+.readiness-card small {
+  color: #a9d7ff;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.readiness-card strong {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.readiness-card p {
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.86);
 }
 
 .lead-text {
@@ -399,7 +494,11 @@ textarea:focus {
 }
 
 .insight-list,
-.issue-list {
+.issue-list,
+.application-list,
+.field-map,
+.risk-list,
+.queue-list {
   display: grid;
   gap: 12px;
   margin: 0;
@@ -476,6 +575,111 @@ textarea:focus {
   color: #526983;
 }
 
+.application-task,
+.field-row,
+.risk-item,
+.queue-item {
+  border: 1px solid #dce7f5;
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: #f8fbff;
+}
+
+.application-task {
+  border-left: 4px solid #3b82f6;
+}
+
+.application-task.required {
+  border-left-color: #ef4444;
+}
+
+.application-task.recommended {
+  border-left-color: #f59e0b;
+}
+
+.application-task.optional {
+  border-left-color: #27c08a;
+}
+
+.application-task span,
+.risk-item span,
+.field-row span {
+  color: #6381a3;
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.application-task strong,
+.risk-item strong,
+.field-row strong,
+.queue-item strong {
+  display: block;
+  color: #14213d;
+}
+
+.application-task p,
+.risk-item p,
+.queue-item p {
+  margin: 4px 0 0;
+  color: #526983;
+}
+
+.field-row {
+  display: grid;
+  gap: 4px;
+}
+
+.field-row small {
+  color: #6c7f98;
+}
+
+.field-row.needs-review {
+  border-color: #f5c772;
+  background: #fffaf0;
+}
+
+.field-row.high {
+  border-color: #b8ecd4;
+  background: #f2fff8;
+}
+
+.risk-item {
+  border-left: 4px solid #27c08a;
+}
+
+.risk-item.medium {
+  border-left-color: #f59e0b;
+}
+
+.risk-item.high {
+  border-left-color: #ef4444;
+}
+
+.draft-card {
+  display: flex;
+  min-height: 430px;
+  flex-direction: column;
+}
+
+.draft-card textarea {
+  flex: 1;
+  min-height: 330px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.application-queue {
+  margin-bottom: 24px;
+}
+
+.queue-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 0.25fr);
+  align-items: center;
+  gap: 18px;
+}
+
 .rewrite-card {
   display: flex;
   min-height: 610px;
@@ -494,7 +698,10 @@ textarea:focus {
   .hero-section,
   .input-grid,
   .keyword-grid,
-  .dashboard-grid {
+  .dashboard-grid,
+  .application-summary-grid,
+  .application-input-grid,
+  .application-hero-card {
     grid-template-columns: 1fr;
   }
 
@@ -513,6 +720,7 @@ textarea:focus {
   .input-card,
   .analysis-card,
   .keyword-panel,
+    .application-hero-card,
   .empty-state {
     border-radius: 22px;
   }
@@ -522,6 +730,7 @@ textarea:focus {
   .input-card,
   .analysis-card,
   .keyword-panel,
+    .application-hero-card,
   .empty-state {
     padding: 22px;
   }
@@ -532,6 +741,12 @@ textarea:focus {
 
   .card-title-row,
   .panel-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .queue-item {
+    display: flex;
     align-items: flex-start;
     flex-direction: column;
   }

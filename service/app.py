@@ -8,6 +8,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
+from service.application_service import plan_application
 from service.ats_service import optimize_resume
 
 
@@ -27,10 +28,15 @@ class ATSRequestHandler(BaseHTTPRequestHandler):
         self._send_response(HTTPStatus.NOT_FOUND, {"error": "Not found"})
 
     def do_POST(self) -> None:
-        if self.path != "/optimize":
-            self._send_response(HTTPStatus.NOT_FOUND, {"error": "Not found"})
+        if self.path == "/optimize":
+            self._handle_optimize()
             return
+        if self.path == "/applications/plan":
+            self._handle_application_plan()
+            return
+        self._send_response(HTTPStatus.NOT_FOUND, {"error": "Not found"})
 
+    def _handle_optimize(self) -> None:
         try:
             payload = self._read_json()
             result = optimize_resume(
@@ -38,6 +44,26 @@ class ATSRequestHandler(BaseHTTPRequestHandler):
                 job_description=str(payload.get("job_description", "")),
                 include_pdf=bool(payload.get("include_pdf", True)),
                 keyword_limit=int(payload.get("keyword_limit", 32)),
+            )
+        except ValueError as error:
+            self._send_response(HTTPStatus.BAD_REQUEST, {"error": str(error)})
+            return
+        except (TypeError, json.JSONDecodeError):
+            self._send_response(HTTPStatus.BAD_REQUEST, {"error": "Request body must be valid JSON."})
+            return
+
+        self._send_response(HTTPStatus.OK, result)
+
+    def _handle_application_plan(self) -> None:
+        try:
+            payload = self._read_json()
+            result = plan_application(
+                master_resume=str(payload.get("master_resume", "")),
+                job_description=str(payload.get("job_description", "")),
+                company_name=str(payload.get("company_name", "")),
+                role_title=str(payload.get("role_title", "")),
+                job_url=str(payload.get("job_url", "")),
+                recruiter_name=str(payload.get("recruiter_name", "")),
             )
         except ValueError as error:
             self._send_response(HTTPStatus.BAD_REQUEST, {"error": str(error)})

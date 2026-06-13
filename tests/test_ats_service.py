@@ -9,6 +9,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from service.app import ATSRequestHandler
+from service.application_service import plan_application
 from service.ats_service import optimize_resume
 
 
@@ -57,6 +58,26 @@ class AtsServiceTests(unittest.TestCase):
         result = optimize_resume(SAMPLE_RESUME, SAMPLE_JOB_DESCRIPTION, include_pdf=False)
         self.assertEqual(result["pdf_base64"], "")
 
+    def test_application_planner_returns_human_review_packet(self) -> None:
+        result = plan_application(
+            SAMPLE_RESUME,
+            SAMPLE_JOB_DESCRIPTION,
+            company_name="BrightApps",
+            job_url="https://boards.greenhouse.io/brightapps/jobs/123",
+            recruiter_name="Taylor",
+        )
+
+        self.assertEqual(result["company_name"], "BrightApps")
+        self.assertEqual(result["portal_type"], "Greenhouse")
+        self.assertIn(result["status"], {"draft", "ready"})
+        self.assertGreater(result["readiness_score"], 50)
+        self.assertTrue(any(task["title"] == "Manual submit checkpoint" for task in result["checklist"]))
+        self.assertTrue(any(field["label"] == "Email" and field["confidence"] == "high" for field in result["field_map"]))
+        self.assertIn("Dear Taylor", result["cover_letter"])
+        self.assertIn("Human review required", {risk["title"] for risk in result["risks"]})
+        self.assertIn("APPLICATION PACKET", result["application_packet"])
+        self.assertIn("TAILORED RESUME DRAFT", result["application_packet"])
+
     def test_http_service_accepts_optimize_request(self) -> None:
         with ThreadingHTTPServer(("127.0.0.1", 0), ATSRequestHandler) as server:
             thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -73,6 +94,28 @@ class AtsServiceTests(unittest.TestCase):
         self.assertEqual(response["pdf_filename"], "ats-optimized-resume.pdf")
         self.assertGreaterEqual(response["keyword_coverage"], 40)
         self.assertTrue(any(keyword["term"] == "react" and keyword["matched"] for keyword in response["ats_keywords"]))
+
+    def test_http_service_accepts_application_plan_request(self) -> None:
+        with ThreadingHTTPServer(("127.0.0.1", 0), ATSRequestHandler) as server:
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                response = self._post_json(
+                    f"http://127.0.0.1:{server.server_port}/applications/plan",
+                    {
+                        "master_resume": SAMPLE_RESUME,
+                        "job_description": SAMPLE_JOB_DESCRIPTION,
+                        "company_name": "BrightApps",
+                        "job_url": "https://jobs.lever.co/brightapps/frontend-engineer",
+                    },
+                )
+            finally:
+                server.shutdown()
+                thread.join(timeout=5)
+
+        self.assertEqual(response["portal_type"], "Lever")
+        self.assertIn("cover_letter", response)
+        self.assertIn("application_packet", response)
 
     def test_http_service_rejects_missing_inputs(self) -> None:
         with ThreadingHTTPServer(("127.0.0.1", 0), ATSRequestHandler) as server:

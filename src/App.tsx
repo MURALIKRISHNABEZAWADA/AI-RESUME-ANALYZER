@@ -1,4 +1,5 @@
 import { ChangeEvent, useMemo, useState } from 'react';
+import { createApplicationPlan, type ApplicationPlan, type ApplicationStatus } from './jobApplicationAgent';
 import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
 
 const sectionLabels = {
@@ -15,6 +16,23 @@ const severityLabel = {
   moderate: 'Medium priority',
   minor: 'Low priority',
 };
+
+const statusLabels: Record<ApplicationStatus, string> = {
+  draft: 'Draft',
+  ready: 'Ready',
+  submitted: 'Submitted',
+  'follow-up': 'Follow-up',
+};
+
+interface QueuedApplication {
+  id: number;
+  companyName: string;
+  roleTitle: string;
+  portalType: string;
+  readinessScore: number;
+  status: ApplicationStatus;
+  nextStep: string;
+}
 
 function MetricCard({ label, value, helper }: { label: string; value: string; helper: string }) {
   return (
@@ -63,23 +81,98 @@ function EmptyState() {
   );
 }
 
+function Checklist({ tasks }: { tasks: ApplicationPlan['checklist'] }) {
+  return (
+    <div className="application-list">
+      {tasks.map((task) => (
+        <div className={`application-task ${task.priority}`} key={task.title}>
+          <span>{task.priority}</span>
+          <strong>{task.title}</strong>
+          <p>{task.detail}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FieldMap({ fields }: { fields: ApplicationPlan['fieldMap'] }) {
+  return (
+    <div className="field-map">
+      {fields.map((field) => (
+        <div className={`field-row ${field.confidence}`} key={field.label}>
+          <span>{field.label}</span>
+          <strong>{field.value}</strong>
+          <small>
+            {field.confidence} - {field.source}
+          </small>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RiskList({ risks }: { risks: ApplicationPlan['risks'] }) {
+  return (
+    <div className="risk-list">
+      {risks.map((risk) => (
+        <div className={`risk-item ${risk.level}`} key={risk.title}>
+          <span>{risk.level} risk</span>
+          <strong>{risk.title}</strong>
+          <p>{risk.detail}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [copyStatus, setCopyStatus] = useState('Copy resume');
+  const [companyName, setCompanyName] = useState('');
+  const [roleTitle, setRoleTitle] = useState('');
+  const [jobUrl, setJobUrl] = useState('');
+  const [recruiterName, setRecruiterName] = useState('');
+  const [copyPacketStatus, setCopyPacketStatus] = useState('Copy packet');
+  const [applicationQueue, setApplicationQueue] = useState<QueuedApplication[]>([]);
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
+  const applicationPlan = useMemo(
+    () =>
+      hasAnalysis
+        ? createApplicationPlan({
+            resume,
+            jobDescription,
+            companyName,
+            roleTitle,
+            jobUrl,
+            recruiterName,
+          })
+        : null,
+    [companyName, hasAnalysis, jobDescription, jobUrl, recruiterName, resume, roleTitle],
+  );
 
   const loadSample = () => {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
+    setCompanyName('BrightApps');
+    setRoleTitle('Frontend Engineer');
+    setJobUrl('https://boards.greenhouse.io/brightapps/jobs/frontend-engineer');
+    setRecruiterName('Taylor');
     setCopyStatus('Copy resume');
+    setCopyPacketStatus('Copy packet');
   };
 
   const resetDashboard = () => {
     setResume('');
     setJobDescription('');
+    setCompanyName('');
+    setRoleTitle('');
+    setJobUrl('');
+    setRecruiterName('');
     setCopyStatus('Copy resume');
+    setCopyPacketStatus('Copy packet');
+    setApplicationQueue([]);
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -92,6 +185,7 @@ function App() {
     reader.onload = () => {
       setResume(String(reader.result ?? ''));
       setCopyStatus('Copy resume');
+      setCopyPacketStatus('Copy packet');
     };
     reader.readAsText(file);
   };
@@ -118,6 +212,59 @@ function App() {
     link.download = 'ats-friendly-resume.txt';
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const copyApplicationPacket = async () => {
+    if (!applicationPlan) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(applicationPlan.applicationPacket);
+    setCopyPacketStatus('Copied');
+    window.setTimeout(() => setCopyPacketStatus('Copy packet'), 1800);
+  };
+
+  const downloadApplicationPacket = () => {
+    if (!applicationPlan) {
+      return;
+    }
+
+    const blob = new Blob([applicationPlan.applicationPacket], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const filenameSlug = `${applicationPlan.companyName}-${applicationPlan.roleTitle}-application-packet`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    link.href = url;
+    link.download = `${filenameSlug}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const queueApplication = () => {
+    if (!applicationPlan) {
+      return;
+    }
+
+    setApplicationQueue((currentQueue) => [
+      {
+        id: Date.now(),
+        companyName: applicationPlan.companyName,
+        roleTitle: applicationPlan.roleTitle,
+        portalType: applicationPlan.portalType,
+        readinessScore: applicationPlan.readinessScore,
+        status: applicationPlan.status,
+        nextStep: applicationPlan.nextStep,
+      },
+      ...currentQueue,
+    ]);
+  };
+
+  const updateQueuedStatus = (id: number, status: ApplicationStatus) => {
+    setApplicationQueue((currentQueue) =>
+      currentQueue.map((application) => (application.id === id ? { ...application, status } : application)),
+    );
   };
 
   return (
@@ -184,6 +331,60 @@ function App() {
             placeholder="Paste the full job description here..."
             value={jobDescription}
           />
+        </article>
+      </section>
+
+      <section className="application-builder" aria-label="Job application automation inputs">
+        <article className="analysis-card wide-card">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Step 3</p>
+              <h2>Job application agent</h2>
+            </div>
+            <span className="status-pill">Human review required</span>
+          </div>
+          <p className="lead-text">
+            Add the application details to generate a tailored application packet, cover letter, form-field map, and
+            submission checklist. The agent prepares the work; you review and submit in the job portal.
+          </p>
+          <div className="application-input-grid">
+            <label>
+              Company
+              <input
+                aria-label="Company name"
+                onChange={(event) => setCompanyName(event.target.value)}
+                placeholder="Acme Inc."
+                value={companyName}
+              />
+            </label>
+            <label>
+              Role title
+              <input
+                aria-label="Role title"
+                onChange={(event) => setRoleTitle(event.target.value)}
+                placeholder="Frontend Engineer"
+                value={roleTitle}
+              />
+            </label>
+            <label>
+              Job posting URL
+              <input
+                aria-label="Job posting URL"
+                onChange={(event) => setJobUrl(event.target.value)}
+                placeholder="https://..."
+                value={jobUrl}
+              />
+            </label>
+            <label>
+              Recruiter or hiring contact
+              <input
+                aria-label="Recruiter or hiring contact"
+                onChange={(event) => setRecruiterName(event.target.value)}
+                placeholder="Optional"
+                value={recruiterName}
+              />
+            </label>
+          </div>
         </article>
       </section>
 
@@ -287,6 +488,144 @@ function App() {
               <textarea aria-label="ATS-friendly rewritten resume" readOnly value={analysis.rewrittenResume} />
             </article>
           </section>
+
+          {applicationPlan ? (
+            <>
+              <section className="application-summary-grid" aria-label="Application automation summary">
+                <article className="application-hero-card">
+                  <div>
+                    <p className="eyebrow">Application agent</p>
+                    <h2>
+                      {applicationPlan.roleTitle} at {applicationPlan.companyName}
+                    </h2>
+                    <p>{applicationPlan.nextStep}</p>
+                    <div className="hero-actions">
+                      <button className="primary-button compact" onClick={queueApplication} type="button">
+                        Queue application
+                      </button>
+                      <button className="ghost-button compact" onClick={copyApplicationPacket} type="button">
+                        {copyPacketStatus}
+                      </button>
+                      <button className="ghost-button compact" onClick={downloadApplicationPacket} type="button">
+                        Download packet
+                      </button>
+                    </div>
+                  </div>
+                  <div className="readiness-card">
+                    <span>Readiness</span>
+                    <strong>{applicationPlan.readinessScore}/100</strong>
+                    <p>{applicationPlan.readinessLevel}</p>
+                    <small>{applicationPlan.portalType}</small>
+                  </div>
+                </article>
+
+                <article className="analysis-card">
+                  <div className="panel-heading">
+                    <div>
+                      <p className="eyebrow">Review checklist</p>
+                      <h2>Before you submit</h2>
+                    </div>
+                    <span className="status-pill">{statusLabels[applicationPlan.status]}</span>
+                  </div>
+                  <Checklist tasks={applicationPlan.checklist} />
+                </article>
+              </section>
+
+              <section className="dashboard-grid">
+                <article className="analysis-card">
+                  <div className="panel-heading">
+                    <div>
+                      <p className="eyebrow">Autofill helper</p>
+                      <h2>Application form field map</h2>
+                    </div>
+                  </div>
+                  <FieldMap fields={applicationPlan.fieldMap} />
+                </article>
+
+                <article className="analysis-card">
+                  <div className="panel-heading">
+                    <div>
+                      <p className="eyebrow">Risk guardrails</p>
+                      <h2>Safe automation notes</h2>
+                    </div>
+                  </div>
+                  <RiskList risks={applicationPlan.risks} />
+                </article>
+              </section>
+
+              <section className="dashboard-grid">
+                <article className="analysis-card draft-card">
+                  <div className="panel-heading">
+                    <div>
+                      <p className="eyebrow">Cover letter</p>
+                      <h2>Tailored draft</h2>
+                    </div>
+                  </div>
+                  <textarea aria-label="Generated cover letter" readOnly value={applicationPlan.coverLetter} />
+                </article>
+
+                <article className="analysis-card draft-card">
+                  <div className="panel-heading">
+                    <div>
+                      <p className="eyebrow">Networking</p>
+                      <h2>Outreach and follow-up</h2>
+                    </div>
+                  </div>
+                  <textarea
+                    aria-label="Generated outreach and follow-up messages"
+                    readOnly
+                    value={`${applicationPlan.outreachMessage}\n\n${applicationPlan.followUpMessage}`}
+                  />
+                </article>
+              </section>
+
+              <section className="analysis-card wide-card application-queue" aria-label="Application queue">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">Tracker</p>
+                    <h2>Application queue</h2>
+                  </div>
+                  <span className="status-pill">{applicationQueue.length} saved</span>
+                </div>
+                {applicationQueue.length ? (
+                  <div className="queue-list">
+                    {applicationQueue.map((application) => (
+                      <div className="queue-item" key={application.id}>
+                        <div>
+                          <strong>
+                            {application.roleTitle} at {application.companyName}
+                          </strong>
+                          <p>
+                            {application.portalType} - {application.readinessScore}/100 - {application.nextStep}
+                          </p>
+                        </div>
+                        <label>
+                          Status
+                          <select
+                            aria-label={`Status for ${application.roleTitle} at ${application.companyName}`}
+                            onChange={(event: ChangeEvent<HTMLSelectElement>) =>
+                              updateQueuedStatus(application.id, event.target.value as ApplicationStatus)
+                            }
+                            value={application.status}
+                          >
+                            {Object.entries(statusLabels).map(([status, label]) => (
+                              <option key={status} value={status}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="muted">
+                    Queue a generated application packet to track review, submission, and follow-up status.
+                  </p>
+                )}
+              </section>
+            </>
+          ) : null}
         </>
       )}
     </main>
