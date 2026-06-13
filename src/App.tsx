@@ -134,6 +134,7 @@ function App() {
   const [jobUrl, setJobUrl] = useState('');
   const [recruiterName, setRecruiterName] = useState('');
   const [copyPacketStatus, setCopyPacketStatus] = useState('Copy packet');
+  const [queueStatus, setQueueStatus] = useState('Queue application');
   const [applicationQueue, setApplicationQueue] = useState<QueuedApplication[]>([]);
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
@@ -161,6 +162,7 @@ function App() {
     setRecruiterName('Taylor');
     setCopyStatus('Copy resume');
     setCopyPacketStatus('Copy packet');
+    setQueueStatus('Queue application');
   };
 
   const resetDashboard = () => {
@@ -172,6 +174,7 @@ function App() {
     setRecruiterName('');
     setCopyStatus('Copy resume');
     setCopyPacketStatus('Copy packet');
+    setQueueStatus('Queue application');
     setApplicationQueue([]);
   };
 
@@ -186,6 +189,7 @@ function App() {
       setResume(String(reader.result ?? ''));
       setCopyStatus('Copy resume');
       setCopyPacketStatus('Copy packet');
+      setQueueStatus('Queue application');
     };
     reader.readAsText(file);
   };
@@ -259,6 +263,8 @@ function App() {
       },
       ...currentQueue,
     ]);
+    setQueueStatus('Queued');
+    window.setTimeout(() => setQueueStatus('Queue application'), 1800);
   };
 
   const updateQueuedStatus = (id: number, status: ApplicationStatus) => {
@@ -501,7 +507,7 @@ function App() {
                     <p>{applicationPlan.nextStep}</p>
                     <div className="hero-actions">
                       <button className="primary-button compact" onClick={queueApplication} type="button">
-                        Queue application
+                        {queueStatus}
                       </button>
                       <button className="ghost-button compact" onClick={copyApplicationPacket} type="button">
                         {copyPacketStatus}
