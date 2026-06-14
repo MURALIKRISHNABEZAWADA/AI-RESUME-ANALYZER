@@ -9,6 +9,9 @@ A user-friendly dashboard that compares a resume against a target job descriptio
 - View an overall resume-to-JD score, keyword coverage, ATS readiness, and missing keywords.
 - Review ATS formatting issues and section checks.
 - Use the local resume rewrite agent to create a clean, single-column, ATS-friendly draft.
+- Use the job application automation agent to prepare a tailored application packet for each role.
+- Track saved application packets with statuses for review, ready to apply, applied, and follow-up.
+- Generate a cover letter draft, recruiter outreach note, form-fill profile, and human-reviewed application checklist.
 - Copy or download the rewritten resume as a text file.
 - Run the Python ATS service to extract keywords, rewrite bullets, calculate a match score, and return an ATS-optimized PDF.
 
@@ -58,3 +61,5 @@ python3 -m unittest discover -s tests
 ## Notes
 
 The analyzer runs locally in the browser with deterministic scoring logic. The generated rewrite is a structured draft and may include placeholders when the original resume lacks verified details. Replace placeholders with accurate experience before applying.
+
+The job application agent is designed to speed up preparation and tracking, not to submit applications unattended. Review each packet, confirm every field, and manually submit through the employer's application portal.
