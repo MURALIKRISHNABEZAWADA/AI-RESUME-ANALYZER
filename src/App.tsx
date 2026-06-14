@@ -1,4 +1,5 @@
-import { ChangeEvent, useMemo, useState } from 'react';
+import { ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { ApplicationPacket, ApplicationStatus, buildApplicationPacket } from './applicationAgent';
 import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
 
 const sectionLabels = {
@@ -15,6 +16,60 @@ const severityLabel = {
   moderate: 'Medium priority',
   minor: 'Low priority',
 };
+
+const applicationStatusLabels: Record<ApplicationStatus, string> = {
+  draft: 'Needs review',
+  ready: 'Ready to apply',
+  applied: 'Applied',
+  follow_up: 'Follow up',
+};
+
+const applicationStatusDescriptions: Record<ApplicationStatus, string> = {
+  draft: 'Improve the packet before submitting.',
+  ready: 'Review once more, then submit manually.',
+  applied: 'Application submitted and ready to track.',
+  follow_up: 'Follow up with recruiter or hiring team.',
+};
+
+const APPLICATION_STORAGE_KEY = 'ai-resume-analyzer-application-packets';
+
+const loadStoredApplications = () => {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(APPLICATION_STORAGE_KEY);
+    return storedValue ? (JSON.parse(storedValue) as ApplicationPacket[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const getPacketDownloadText = (packet: ApplicationPacket) =>
+  [
+    `${packet.jobTitle} at ${packet.company}`,
+    packet.fitSummary,
+    '',
+    'APPLICATION CHECKLIST',
+    ...packet.checklist.map((item) => `- ${item}`),
+    '',
+    'AUTOMATION PLAN',
+    ...packet.automationPlan.map((item) => `- ${item}`),
+    '',
+    'CONTACT PROFILE',
+    `Name: ${packet.contactProfile.name}`,
+    `Email: ${packet.contactProfile.email}`,
+    `Phone: ${packet.contactProfile.phone}`,
+    `LinkedIn: ${packet.contactProfile.linkedin}`,
+    `Portfolio: ${packet.contactProfile.portfolio}`,
+    '',
+    'COVER LETTER',
+    packet.coverLetter,
+    '',
+    'TAILORED RESUME',
+    packet.tailoredResume,
+  ].join('\n');
 
 function MetricCard({ label, value, helper }: { label: string; value: string; helper: string }) {
   return (
@@ -48,6 +103,34 @@ function KeywordList({ title, keywords, tone }: { title: string; keywords: strin
   );
 }
 
+function ProfileField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="profile-field">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function ApplicationQueueCard({
+  packet,
+  isActive,
+  onSelect,
+}: {
+  packet: ApplicationPacket;
+  isActive: boolean;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <button className={`queue-card ${isActive ? 'active' : ''}`} onClick={() => onSelect(packet.id)} type="button">
+      <span className={`status-pill application-status ${packet.status}`}>{applicationStatusLabels[packet.status]}</span>
+      <strong>{packet.jobTitle}</strong>
+      <span>{packet.company}</span>
+      <small>{packet.analysis.score}/100 match</small>
+    </button>
+  );
+}
+
 function EmptyState() {
   return (
     <section className="empty-state">
@@ -66,20 +149,42 @@ function EmptyState() {
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
+  const [company, setCompany] = useState('');
+  const [applicationUrl, setApplicationUrl] = useState('');
+  const [applicationPackets, setApplicationPackets] = useState<ApplicationPacket[]>(loadStoredApplications);
+  const [selectedPacketId, setSelectedPacketId] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState('Copy resume');
+  const [packetCopyStatus, setPacketCopyStatus] = useState('Copy packet');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
+  const selectedPacket = useMemo(
+    () => applicationPackets.find((packet) => packet.id === selectedPacketId) ?? applicationPackets[0],
+    [applicationPackets, selectedPacketId],
+  );
+
+  useEffect(() => {
+    window.localStorage.setItem(APPLICATION_STORAGE_KEY, JSON.stringify(applicationPackets));
+  }, [applicationPackets]);
 
   const loadSample = () => {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
+    setJobTitle('Frontend Engineer');
+    setCompany('Nimbus Labs');
+    setApplicationUrl('https://careers.example.com/frontend-engineer');
     setCopyStatus('Copy resume');
+    setPacketCopyStatus('Copy packet');
   };
 
   const resetDashboard = () => {
     setResume('');
     setJobDescription('');
+    setJobTitle('');
+    setCompany('');
+    setApplicationUrl('');
     setCopyStatus('Copy resume');
+    setPacketCopyStatus('Copy packet');
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -92,6 +197,7 @@ function App() {
     reader.onload = () => {
       setResume(String(reader.result ?? ''));
       setCopyStatus('Copy resume');
+      setPacketCopyStatus('Copy packet');
     };
     reader.readAsText(file);
   };
@@ -116,6 +222,63 @@ function App() {
     const link = document.createElement('a');
     link.href = url;
     link.download = 'ats-friendly-resume.txt';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const prepareApplication = () => {
+    if (!hasAnalysis) {
+      return;
+    }
+
+    const packet = buildApplicationPacket({
+      resume,
+      jobDescription,
+      jobTitle,
+      company,
+      applicationUrl,
+    });
+    setApplicationPackets((currentPackets) => [packet, ...currentPackets]);
+    setSelectedPacketId(packet.id);
+    setPacketCopyStatus('Copy packet');
+  };
+
+  const updatePacketStatus = (id: string, status: ApplicationStatus) => {
+    setApplicationPackets((currentPackets) =>
+      currentPackets.map((packet) => (packet.id === id ? { ...packet, status } : packet)),
+    );
+  };
+
+  const clearApplicationQueue = () => {
+    setApplicationPackets([]);
+    setSelectedPacketId(null);
+    setPacketCopyStatus('Copy packet');
+  };
+
+  const copyPacket = async () => {
+    if (!selectedPacket) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(getPacketDownloadText(selectedPacket));
+    setPacketCopyStatus('Copied');
+    window.setTimeout(() => setPacketCopyStatus('Copy packet'), 1800);
+  };
+
+  const downloadPacket = () => {
+    if (!selectedPacket) {
+      return;
+    }
+
+    const blob = new Blob([getPacketDownloadText(selectedPacket)], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const filename = `${selectedPacket.company}-${selectedPacket.jobTitle}-application-packet`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    link.href = url;
+    link.download = `${filename}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -185,6 +348,183 @@ function App() {
             value={jobDescription}
           />
         </article>
+      </section>
+
+      <section className="application-agent-section" aria-label="Job application automation agent">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Job application automation agent</p>
+            <h2>Prepare, track, and review every application packet.</h2>
+          </div>
+          <span className="status-pill">{applicationPackets.length} saved</span>
+        </div>
+        <p className="lead-text">
+          The agent turns your resume and target JD into a tailored resume draft, cover letter, form-fill profile,
+          recruiter outreach note, and human-reviewed submission checklist. It never submits applications for you.
+        </p>
+
+        <div className="agent-control-grid">
+          <label>
+            Company
+            <input
+              className="text-input"
+              onChange={(event) => setCompany(event.target.value)}
+              placeholder="Target company"
+              type="text"
+              value={company}
+            />
+          </label>
+          <label>
+            Job title
+            <input
+              className="text-input"
+              onChange={(event) => setJobTitle(event.target.value)}
+              placeholder="Role title"
+              type="text"
+              value={jobTitle}
+            />
+          </label>
+          <label>
+            Application URL
+            <input
+              className="text-input"
+              onChange={(event) => setApplicationUrl(event.target.value)}
+              placeholder="https://..."
+              type="url"
+              value={applicationUrl}
+            />
+          </label>
+          <div className="agent-actions">
+            <button className="primary-button" disabled={!hasAnalysis} onClick={prepareApplication} type="button">
+              Prepare application
+            </button>
+            <button className="ghost-button" disabled={!applicationPackets.length} onClick={clearApplicationQueue} type="button">
+              Clear queue
+            </button>
+          </div>
+        </div>
+
+        {!applicationPackets.length ? (
+          <div className="agent-empty">
+            <strong>No application packets yet.</strong>
+            <p>Paste your resume and a job description, then prepare an application to start the queue.</p>
+          </div>
+        ) : (
+          <div className="application-agent-grid">
+            <aside className="queue-column" aria-label="Saved application packets">
+              <h3>Application queue</h3>
+              <div className="queue-list">
+                {applicationPackets.map((packet) => (
+                  <ApplicationQueueCard
+                    isActive={packet.id === selectedPacket?.id}
+                    key={packet.id}
+                    onSelect={setSelectedPacketId}
+                    packet={packet}
+                  />
+                ))}
+              </div>
+            </aside>
+
+            {selectedPacket ? (
+              <article className="packet-panel">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">Prepared packet</p>
+                    <h2>
+                      {selectedPacket.jobTitle} at {selectedPacket.company}
+                    </h2>
+                  </div>
+                  <div className="button-row">
+                    <button className="ghost-button compact" onClick={copyPacket} type="button">
+                      {packetCopyStatus}
+                    </button>
+                    <button className="primary-button compact" onClick={downloadPacket} type="button">
+                      Download packet
+                    </button>
+                  </div>
+                </div>
+
+                <p className="fit-summary">{selectedPacket.fitSummary}</p>
+                <div className="packet-metrics">
+                  <MetricCard
+                    helper="Resume/JD alignment"
+                    label="Fit score"
+                    value={`${selectedPacket.analysis.score}/100`}
+                  />
+                  <MetricCard
+                    helper="JD terms found"
+                    label="Keywords"
+                    value={`${selectedPacket.analysis.keywordCoverage}%`}
+                  />
+                  <MetricCard
+                    helper={applicationStatusDescriptions[selectedPacket.status]}
+                    label="Status"
+                    value={applicationStatusLabels[selectedPacket.status]}
+                  />
+                </div>
+
+                <div className="button-row status-actions" aria-label="Update application status">
+                  {(['draft', 'ready', 'applied', 'follow_up'] as ApplicationStatus[]).map((status) => (
+                    <button
+                      className={selectedPacket.status === status ? 'primary-button compact' : 'ghost-button compact'}
+                      key={status}
+                      onClick={() => updatePacketStatus(selectedPacket.id, status)}
+                      type="button"
+                    >
+                      {applicationStatusLabels[status]}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="packet-detail-grid">
+                  <section className="packet-card">
+                    <h3>Form-fill profile</h3>
+                    <div className="profile-grid">
+                      <ProfileField label="Name" value={selectedPacket.contactProfile.name} />
+                      <ProfileField label="Email" value={selectedPacket.contactProfile.email} />
+                      <ProfileField label="Phone" value={selectedPacket.contactProfile.phone} />
+                      <ProfileField label="LinkedIn" value={selectedPacket.contactProfile.linkedin} />
+                      <ProfileField label="Portfolio" value={selectedPacket.contactProfile.portfolio} />
+                    </div>
+                  </section>
+
+                  <section className="packet-card">
+                    <h3>Submission checklist</h3>
+                    <ul className="insight-list">
+                      {selectedPacket.checklist.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </section>
+                </div>
+
+                <section className="packet-card">
+                  <h3>Automation plan</h3>
+                  <ol className="insight-list numbered">
+                    {selectedPacket.automationPlan.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ol>
+                </section>
+
+                <section className="packet-card">
+                  <h3>Cover letter draft</h3>
+                  <textarea aria-label="Generated cover letter" readOnly value={selectedPacket.coverLetter} />
+                </section>
+
+                <section className="packet-card">
+                  <h3>Recruiter outreach note</h3>
+                  <textarea aria-label="Generated recruiter outreach note" readOnly value={selectedPacket.outreachMessage} />
+                </section>
+
+                <section className="packet-card">
+                  <h3>Tailored resume draft</h3>
+                  <textarea aria-label="Generated application resume" readOnly value={selectedPacket.tailoredResume} />
+                </section>
+              </article>
+            ) : null}
+          </div>
+        )}
       </section>
 
       {!hasAnalysis ? (
