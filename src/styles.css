@@ -276,7 +276,22 @@ textarea {
     box-shadow 160ms ease;
 }
 
-textarea:focus {
+.text-input {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #d6e2f1;
+  border-radius: 16px;
+  padding: 0 16px;
+  outline: none;
+  background: #f8fbff;
+  color: #172b4d;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+textarea:focus,
+.text-input:focus {
   border-color: #3478f6;
   box-shadow: 0 0 0 4px rgba(52, 120, 246, 0.12);
 }
@@ -490,11 +505,132 @@ textarea:focus {
   line-height: 1.65;
 }
 
+.application-agent-card {
+  margin-bottom: 24px;
+}
+
+.application-input-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 24px 0;
+}
+
+.application-input-grid label {
+  display: grid;
+  gap: 8px;
+  color: #405775;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.notes-field {
+  grid-column: 1 / -1;
+}
+
+.compact-textarea {
+  min-height: 120px;
+}
+
+.application-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.application-panel {
+  border: 1px solid #dbe7f7;
+  border-radius: 22px;
+  padding: 20px;
+  background: #f8fbff;
+}
+
+.compact-heading {
+  margin-bottom: 14px;
+}
+
+.compact-heading span {
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #eef5ff;
+  color: #245ba8;
+  font-weight: 900;
+}
+
+.application-panel .insight-list p {
+  margin: 4px 0 0;
+  color: #526983;
+}
+
+.field-suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field-suggestion {
+  border-left: 4px solid #d6e2f1;
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: #ffffff;
+}
+
+.field-suggestion.ready {
+  border-left-color: #27c08a;
+}
+
+.field-suggestion.review {
+  border-left-color: #f59e0b;
+}
+
+.field-suggestion.missing {
+  border-left-color: #ef4444;
+}
+
+.field-suggestion span,
+.field-suggestion small {
+  color: #6381a3;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.field-suggestion strong {
+  display: block;
+  margin-top: 2px;
+  color: #14213d;
+}
+
+.field-suggestion p {
+  margin: 4px 0;
+  color: #526983;
+}
+
+.packet-panel {
+  display: flex;
+  min-height: 460px;
+  flex-direction: column;
+}
+
+.packet-panel textarea {
+  flex: 1;
+  min-height: 330px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
 @media (max-width: 1120px) {
   .hero-section,
   .input-grid,
   .keyword-grid,
-  .dashboard-grid {
+  .dashboard-grid,
+  .application-input-grid,
+  .application-grid,
+  .field-suggestion-grid {
     grid-template-columns: 1fr;
   }
 
@@ -542,5 +678,9 @@ textarea:focus {
 
   .rewrite-card textarea {
     min-height: 420px;
+  }
+
+  .packet-panel textarea {
+    min-height: 280px;
   }
 }

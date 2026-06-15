@@ -1,4 +1,5 @@
 import { ChangeEvent, useMemo, useState } from 'react';
+import { buildJobApplicationPlan } from './applicationAgent';
 import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
 
 const sectionLabels = {
@@ -14,6 +15,12 @@ const severityLabel = {
   major: 'High priority',
   moderate: 'Medium priority',
   minor: 'Low priority',
+};
+
+const applicationStatusLabel = {
+  ready: 'Ready',
+  review: 'Review',
+  missing: 'Missing',
 };
 
 function MetricCard({ label, value, helper }: { label: string; value: string; helper: string }) {
@@ -66,20 +73,46 @@ function EmptyState() {
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
+  const [jobUrl, setJobUrl] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [applicantNotes, setApplicantNotes] = useState('');
   const [copyStatus, setCopyStatus] = useState('Copy resume');
+  const [applicationCopyStatus, setApplicationCopyStatus] = useState('Copy packet');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
+  const applicationPlan = useMemo(
+    () =>
+      hasAnalysis
+        ? buildJobApplicationPlan({
+            resume,
+            jobDescription,
+            jobUrl,
+            companyName,
+            applicantNotes,
+            analysis,
+          })
+        : null,
+    [analysis, applicantNotes, companyName, hasAnalysis, jobDescription, jobUrl, resume],
+  );
 
   const loadSample = () => {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
+    setJobUrl('https://careers.example.com/frontend-engineer');
+    setCompanyName('Example Apps');
+    setApplicantNotes('Available for frontend roles focused on accessibility, performance, and product collaboration.');
     setCopyStatus('Copy resume');
+    setApplicationCopyStatus('Copy packet');
   };
 
   const resetDashboard = () => {
     setResume('');
     setJobDescription('');
+    setJobUrl('');
+    setCompanyName('');
+    setApplicantNotes('');
     setCopyStatus('Copy resume');
+    setApplicationCopyStatus('Copy packet');
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -106,6 +139,16 @@ function App() {
     window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
   };
 
+  const copyApplicationPacket = async () => {
+    if (!applicationPlan) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(applicationPlan.applicationPacket);
+    setApplicationCopyStatus('Copied');
+    window.setTimeout(() => setApplicationCopyStatus('Copy packet'), 1800);
+  };
+
   const downloadRewrite = () => {
     if (!analysis.rewrittenResume) {
       return;
@@ -116,6 +159,20 @@ function App() {
     const link = document.createElement('a');
     link.href = url;
     link.download = 'ats-friendly-resume.txt';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadApplicationPacket = () => {
+    if (!applicationPlan) {
+      return;
+    }
+
+    const blob = new Blob([applicationPlan.applicationPacket], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'job-application-packet.txt';
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -287,6 +344,134 @@ function App() {
               <textarea aria-label="ATS-friendly rewritten resume" readOnly value={analysis.rewrittenResume} />
             </article>
           </section>
+
+          {applicationPlan ? (
+            <section className="analysis-card application-agent-card" aria-label="Job application automation agent">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Step 3</p>
+                  <h2>Job application automation agent</h2>
+                </div>
+                <span className="status-pill">
+                  {applicationPlan.readinessScore}/100 - {applicationPlan.status}
+                </span>
+              </div>
+
+              <p className="lead-text">{applicationPlan.summary}</p>
+
+              <div className="application-input-grid">
+                <label>
+                  <span>Job posting URL</span>
+                  <input
+                    className="text-input"
+                    onChange={(event) => setJobUrl(event.target.value)}
+                    placeholder="https://company.com/jobs/role"
+                    type="url"
+                    value={jobUrl}
+                  />
+                </label>
+                <label>
+                  <span>Company or portal</span>
+                  <input
+                    className="text-input"
+                    onChange={(event) => setCompanyName(event.target.value)}
+                    placeholder="Company name"
+                    type="text"
+                    value={companyName}
+                  />
+                </label>
+                <label className="notes-field">
+                  <span>Application notes</span>
+                  <textarea
+                    className="compact-textarea"
+                    onChange={(event) => setApplicantNotes(event.target.value)}
+                    placeholder="Add preferences, work authorization notes, salary range, availability, or recruiter context to include in drafts."
+                    value={applicantNotes}
+                  />
+                </label>
+              </div>
+
+              <div className="application-grid">
+                <article className="application-panel">
+                  <div className="panel-heading compact-heading">
+                    <h3>Readiness blockers</h3>
+                    <span>{applicationPlan.blockers.length}</span>
+                  </div>
+                  {applicationPlan.blockers.length ? (
+                    <div className="issue-list">
+                      {applicationPlan.blockers.map((blocker) => (
+                        <div className={`issue ${blocker.severity === 'high' ? 'major' : 'moderate'}`} key={blocker.title}>
+                          <span>{blocker.severity} priority</span>
+                          <strong>{blocker.title}</strong>
+                          <p>{blocker.detail}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="muted">No major blockers detected. Review everything once before submitting manually.</p>
+                  )}
+                </article>
+
+                <article className="application-panel">
+                  <div className="panel-heading compact-heading">
+                    <h3>Agent checklist</h3>
+                  </div>
+                  <ol className="insight-list numbered">
+                    {applicationPlan.steps.map((step) => (
+                      <li key={step.title}>
+                        <strong>{step.title}</strong>
+                        <p>{step.detail}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </article>
+
+                <article className="application-panel wide-card">
+                  <div className="panel-heading compact-heading">
+                    <h3>Suggested application fields</h3>
+                  </div>
+                  <div className="field-suggestion-grid">
+                    {applicationPlan.fieldChecklist.map((field) => (
+                      <div className={`field-suggestion ${field.status}`} key={field.label}>
+                        <span>{applicationStatusLabel[field.status]}</span>
+                        <strong>{field.label}</strong>
+                        <p>{field.suggestedValue}</p>
+                        <small>Source: {field.source}</small>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+
+                <article className="application-panel packet-panel">
+                  <div className="panel-heading compact-heading">
+                    <div>
+                      <h3>Cover letter draft</h3>
+                      <p className="muted">Review and personalize before sending.</p>
+                    </div>
+                    <div className="button-row">
+                      <button className="ghost-button compact" onClick={copyApplicationPacket} type="button">
+                        {applicationCopyStatus}
+                      </button>
+                      <button className="primary-button compact" onClick={downloadApplicationPacket} type="button">
+                        Download packet
+                      </button>
+                    </div>
+                  </div>
+                  <textarea aria-label="Generated cover letter" readOnly value={applicationPlan.coverLetter} />
+                </article>
+
+                <article className="application-panel">
+                  <div className="panel-heading compact-heading">
+                    <h3>Recruiter message</h3>
+                  </div>
+                  <p className="lead-text">{applicationPlan.recruiterMessage}</p>
+                  <p className="muted">
+                    The agent prepares materials and checkpoints only. Keep final submission under your control.
+                  </p>
+                </article>
+              </div>
+            </section>
+          ) : null}
         </>
       )}
     </main>
