@@ -9,8 +9,9 @@ A user-friendly dashboard that compares a resume against a target job descriptio
 - View an overall resume-to-JD score, keyword coverage, ATS readiness, and missing keywords.
 - Review ATS formatting issues and section checks.
 - Use the local resume rewrite agent to create a clean, single-column, ATS-friendly draft.
+- Generate a supervised job application packet with field suggestions, readiness blockers, a checklist, a cover letter draft, and a recruiter message.
 - Copy or download the rewritten resume as a text file.
-- Run the Python ATS service to extract keywords, rewrite bullets, calculate a match score, and return an ATS-optimized PDF.
+- Run the Python ATS service to extract keywords, rewrite bullets, calculate a match score, return an ATS-optimized PDF, and build a job application plan.
 
 ## Getting started
 
@@ -48,6 +49,16 @@ curl -X POST http://127.0.0.1:8000/optimize \
 ```
 
 The `/optimize` response includes `ats_keywords`, `matched_keywords`, `missing_keywords`, `rewritten_bullets`, `optimized_resume_text`, `ats_match_score`, and a base64 `pdf_base64` payload for `ats-optimized-resume.pdf`.
+
+Build a supervised job application plan:
+
+```bash
+curl -X POST http://127.0.0.1:8000/apply/plan \
+  -H "Content-Type: application/json" \
+  -d '{"master_resume":"Paste resume text here","job_description":"Paste job description here","job_url":"https://company.example/jobs/role","company_name":"Company Name"}'
+```
+
+The `/apply/plan` response includes a readiness score, application field checklist, blockers, next steps, cover letter draft, recruiter message, and optimized resume text. The agent prepares materials for review and does not submit applications automatically.
 
 ## Python tests
 
