@@ -134,9 +134,13 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
-    setCopyStatus('Copied');
-    window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
+    try {
+      await navigator.clipboard.writeText(analysis.rewrittenResume);
+      setCopyStatus('Copied');
+    } catch {
+      setCopyStatus('Copy unavailable');
+    }
+    window.setTimeout(() => setCopyStatus('Copy resume'), 2400);
   };
 
   const copyApplicationPacket = async () => {
@@ -144,9 +148,13 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(applicationPlan.applicationPacket);
-    setApplicationCopyStatus('Copied');
-    window.setTimeout(() => setApplicationCopyStatus('Copy packet'), 1800);
+    try {
+      await navigator.clipboard.writeText(applicationPlan.applicationPacket);
+      setApplicationCopyStatus('Copied');
+    } catch {
+      setApplicationCopyStatus('Copy unavailable');
+    }
+    window.setTimeout(() => setApplicationCopyStatus('Copy packet'), 2400);
   };
 
   const downloadRewrite = () => {

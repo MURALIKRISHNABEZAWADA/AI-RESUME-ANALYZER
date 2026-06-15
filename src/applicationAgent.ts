@@ -238,6 +238,7 @@ export const buildJobApplicationPlan = ({
     },
   ];
   const companyLine = resolvedCompany || 'your team';
+  const companyPossessive = companyLine.endsWith('s') ? `${companyLine}'` : `${companyLine}'s`;
   const topKeywords = analysis.matchedKeywords.slice(0, 4).map(titleCase).join(', ') || "the role's core requirements";
   const noteSentence = applicantNotes.trim() ? ` I would also highlight: ${applicantNotes.trim()}` : '';
   const coverLetter = [
@@ -245,7 +246,7 @@ export const buildJobApplicationPlan = ({
     '',
     `I am excited to apply for the ${roleTitle} role. My background aligns with ${topKeywords}, and I bring a practical track record of turning requirements into reliable outcomes.`,
     '',
-    `In this application, I would emphasize verified accomplishments from my resume, connect them directly to ${companyLine}'s needs, and keep the materials concise for both recruiters and ATS systems.${noteSentence}`,
+    `In this application, I would emphasize verified accomplishments from my resume, connect them directly to ${companyPossessive} needs, and keep the materials concise for both recruiters and ATS systems.${noteSentence}`,
     '',
     'Thank you for your time and consideration. I would welcome the opportunity to discuss how my experience can help your team.',
     '',

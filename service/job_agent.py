@@ -89,6 +89,7 @@ def _build_cover_letter(
     applicant_notes: str,
 ) -> str:
     company_line = company or "your team"
+    company_possessive = f"{company_line}'" if company_line.endswith("s") else f"{company_line}'s"
     top_keywords = ", ".join(title_case(keyword) for keyword in matched_keywords[:4]) or "the role's core requirements"
     note_sentence = f" I would also highlight: {applicant_notes.strip()}" if applicant_notes.strip() else ""
 
@@ -103,7 +104,7 @@ def _build_cover_letter(
             "",
             (
                 "In this application, I would emphasize verified accomplishments from my resume, connect them directly "
-                f"to {company_line}'s needs, and keep the materials concise for both recruiters and ATS systems."
+                f"to {company_possessive} needs, and keep the materials concise for both recruiters and ATS systems."
                 f"{note_sentence}"
             ),
             "",

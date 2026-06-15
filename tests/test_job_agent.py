@@ -53,6 +53,7 @@ class JobAgentTests(unittest.TestCase):
         self.assertGreater(result["readiness_score"], 0)
         self.assertIn("does not submit applications automatically", result["summary"])
         self.assertIn("Example Apps hiring team", result["cover_letter"])
+        self.assertIn("Example Apps' needs", result["cover_letter"])
         self.assertTrue(any(field["label"] == "Email" and field["status"] == "ready" for field in result["field_checklist"]))
         self.assertTrue(any(step["title"] == "Submit manually" for step in result["steps"]))
 
