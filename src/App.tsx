@@ -1,4 +1,5 @@
 import { ChangeEvent, useMemo, useState } from 'react';
+import { createJobApplicationPlan, type JobApplicationPlan } from './applicationAgent';
 import { analyzeResume, sampleJobDescription, sampleResume } from './resumeAgent';
 
 const sectionLabels = {
@@ -15,6 +16,8 @@ const severityLabel = {
   moderate: 'Medium priority',
   minor: 'Low priority',
 };
+
+const COPY_FEEDBACK_DURATION_MS = 4200;
 
 function MetricCard({ label, value, helper }: { label: string; value: string; helper: string }) {
   return (
@@ -63,23 +66,159 @@ function EmptyState() {
   );
 }
 
+function ConfidenceBadge({ confidence }: { confidence: 'ready' | 'review' | 'missing' }) {
+  const label = confidence === 'ready' ? 'Ready' : confidence === 'review' ? 'Review' : 'Missing';
+
+  return <span className={`confidence-badge ${confidence}`}>{label}</span>;
+}
+
+function JobApplicationAgentPanel({
+  kitCopyStatus,
+  onCopyKit,
+  onDownloadKit,
+  onDownloadTracker,
+  plan,
+}: {
+  kitCopyStatus: string;
+  onCopyKit: () => void;
+  onDownloadKit: () => void;
+  onDownloadTracker: () => void;
+  plan: JobApplicationPlan;
+}) {
+  return (
+    <section className="application-agent" aria-label="Job application automation agent">
+      <article className="analysis-card agent-summary-card">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Job application automation agent</p>
+            <h2>{plan.roleTitle}</h2>
+          </div>
+          <span className={`readiness-pill ${plan.readiness.toLowerCase().replace(/\s+/g, '-')}`}>
+            {plan.readiness}
+          </span>
+        </div>
+        <div className="agent-score-row">
+          <div className="priority-score">
+            <span>{plan.priorityScore}</span>
+            <small>priority score</small>
+          </div>
+          <div>
+            <strong>{plan.companyName}</strong>
+            <p>{plan.summary}</p>
+          </div>
+        </div>
+        <div className="button-row">
+          <button className="primary-button compact agent-copy-button" onClick={onCopyKit} type="button">
+            {kitCopyStatus}
+          </button>
+          <button className="ghost-button compact" onClick={onDownloadKit} type="button">
+            Download kit
+          </button>
+          <button className="ghost-button compact" onClick={onDownloadTracker} type="button">
+            Download tracker CSV
+          </button>
+        </div>
+      </article>
+
+      <article className="analysis-card">
+        <div className="panel-heading">
+          <h2>Application workflow</h2>
+          <span className="status-pill">{plan.steps.length} steps</span>
+        </div>
+        <ol className="agent-step-list">
+          {plan.steps.map((step) => (
+            <li key={step.title}>
+              <strong>{step.title}</strong>
+              <p>{step.detail}</p>
+              <span>{step.automationTip}</span>
+            </li>
+          ))}
+        </ol>
+      </article>
+
+      <article className="analysis-card">
+        <div className="panel-heading">
+          <h2>Autofill profile</h2>
+          <span className="status-pill">Verify before use</span>
+        </div>
+        <div className="profile-field-grid">
+          {plan.profileFields.map((field) => (
+            <div className="profile-field" key={field.label}>
+              <div>
+                <span>{field.label}</span>
+                <strong>{field.value}</strong>
+              </div>
+              <ConfidenceBadge confidence={field.confidence} />
+            </div>
+          ))}
+        </div>
+      </article>
+
+      <article className="analysis-card">
+        <div className="panel-heading">
+          <h2>Document checklist</h2>
+        </div>
+        <ul className="insight-list">
+          {plan.documents.map((document) => (
+            <li key={document}>{document}</li>
+          ))}
+        </ul>
+      </article>
+
+      <article className="analysis-card draft-card">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Generated draft</p>
+            <h2>Cover letter</h2>
+          </div>
+        </div>
+        <textarea aria-label="Generated cover letter" readOnly value={plan.drafts.coverLetter} />
+      </article>
+
+      <article className="analysis-card draft-card">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Generated draft</p>
+            <h2>Outreach messages</h2>
+          </div>
+        </div>
+        <label>
+          Recruiter message
+          <textarea aria-label="Recruiter outreach message" readOnly value={plan.drafts.recruiterMessage} />
+        </label>
+        <label>
+          Follow-up message
+          <textarea aria-label="Application follow-up message" readOnly value={plan.drafts.followUpMessage} />
+        </label>
+      </article>
+    </section>
+  );
+}
+
 function App() {
   const [resume, setResume] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [copyStatus, setCopyStatus] = useState('Copy resume');
+  const [kitCopyStatus, setKitCopyStatus] = useState('Copy kit');
   const analysis = useMemo(() => analyzeResume(resume, jobDescription), [resume, jobDescription]);
   const hasAnalysis = Boolean(resume.trim() && jobDescription.trim());
+  const applicationPlan = useMemo(
+    () => (hasAnalysis ? createJobApplicationPlan(resume, jobDescription, analysis) : null),
+    [analysis, hasAnalysis, jobDescription, resume],
+  );
 
   const loadSample = () => {
     setResume(sampleResume);
     setJobDescription(sampleJobDescription);
     setCopyStatus('Copy resume');
+    setKitCopyStatus('Copy kit');
   };
 
   const resetDashboard = () => {
     setResume('');
     setJobDescription('');
     setCopyStatus('Copy resume');
+    setKitCopyStatus('Copy kit');
   };
 
   const handleResumeUpload = (event: ChangeEvent<HTMLInputElement>) => {
@@ -92,8 +231,62 @@ function App() {
     reader.onload = () => {
       setResume(String(reader.result ?? ''));
       setCopyStatus('Copy resume');
+      setKitCopyStatus('Copy kit');
     };
     reader.readAsText(file);
+  };
+
+  const downloadTextFile = (filename: string, content: string, type = 'text/plain;charset=utf-8') => {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const writeClipboardText = async (content: string) => {
+    const clipboardTimeout = new Promise<false>((resolve) => {
+      window.setTimeout(() => resolve(false), 600);
+    });
+
+    if (navigator.clipboard?.writeText && window.isSecureContext) {
+      try {
+        const copied = await Promise.race([
+          navigator.clipboard.writeText(content).then(() => true),
+          clipboardTimeout,
+        ]);
+        if (copied) {
+          return true;
+        }
+      } catch {
+        // Fall back to the legacy copy command below when browser permissions block the Clipboard API.
+      }
+    }
+
+    const textArea = document.createElement('textarea');
+    textArea.value = content;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+      const copied = document.execCommand('copy');
+      if (copied) {
+        return true;
+      }
+    } catch {
+      // Return false below so the button can show an explicit failure state.
+    } finally {
+      document.body.removeChild(textArea);
+    }
+
+    return false;
   };
 
   const copyRewrite = async () => {
@@ -101,9 +294,10 @@ function App() {
       return;
     }
 
-    await navigator.clipboard.writeText(analysis.rewrittenResume);
-    setCopyStatus('Copied');
-    window.setTimeout(() => setCopyStatus('Copy resume'), 1800);
+    setCopyStatus('Copying...');
+    const copied = await writeClipboardText(analysis.rewrittenResume);
+    setCopyStatus(copied ? 'Copied' : 'Copy failed');
+    window.setTimeout(() => setCopyStatus('Copy resume'), COPY_FEEDBACK_DURATION_MS);
   };
 
   const downloadRewrite = () => {
@@ -111,13 +305,34 @@ function App() {
       return;
     }
 
-    const blob = new Blob([analysis.rewrittenResume], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'ats-friendly-resume.txt';
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadTextFile('ats-friendly-resume.txt', analysis.rewrittenResume);
+  };
+
+  const copyApplicationKit = async () => {
+    if (!applicationPlan) {
+      return;
+    }
+
+    setKitCopyStatus('Copying...');
+    const copied = await writeClipboardText(applicationPlan.applicationKit);
+    setKitCopyStatus(copied ? 'Copied' : 'Copy failed');
+    window.setTimeout(() => setKitCopyStatus('Copy kit'), COPY_FEEDBACK_DURATION_MS);
+  };
+
+  const downloadApplicationKit = () => {
+    if (!applicationPlan) {
+      return;
+    }
+
+    downloadTextFile('job-application-kit.txt', applicationPlan.applicationKit);
+  };
+
+  const downloadTracker = () => {
+    if (!applicationPlan) {
+      return;
+    }
+
+    downloadTextFile('job-application-tracker.csv', applicationPlan.tracker.csv, 'text/csv;charset=utf-8');
   };
 
   return (
@@ -165,7 +380,10 @@ function App() {
           </div>
           <textarea
             aria-label="Resume text"
-            onChange={(event) => setResume(event.target.value)}
+            onChange={(event) => {
+              setResume(event.target.value);
+              setKitCopyStatus('Copy kit');
+            }}
             placeholder="Paste your resume text here..."
             value={resume}
           />
@@ -180,7 +398,10 @@ function App() {
           </div>
           <textarea
             aria-label="Job description text"
-            onChange={(event) => setJobDescription(event.target.value)}
+            onChange={(event) => {
+              setJobDescription(event.target.value);
+              setKitCopyStatus('Copy kit');
+            }}
             placeholder="Paste the full job description here..."
             value={jobDescription}
           />
@@ -287,6 +508,16 @@ function App() {
               <textarea aria-label="ATS-friendly rewritten resume" readOnly value={analysis.rewrittenResume} />
             </article>
           </section>
+
+          {applicationPlan ? (
+            <JobApplicationAgentPanel
+              kitCopyStatus={kitCopyStatus}
+              onCopyKit={copyApplicationKit}
+              onDownloadKit={downloadApplicationKit}
+              onDownloadTracker={downloadTracker}
+              plan={applicationPlan}
+            />
+          ) : null}
         </>
       )}
     </main>

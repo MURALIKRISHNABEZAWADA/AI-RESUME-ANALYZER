@@ -303,7 +303,8 @@ textarea:focus {
 
 .metrics-grid,
 .dashboard-grid,
-.keyword-grid {
+.keyword-grid,
+.application-agent {
   display: grid;
   gap: 24px;
   margin-bottom: 24px;
@@ -423,6 +424,185 @@ textarea:focus {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.application-agent {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.agent-summary-card {
+  grid-column: 1 / -1;
+}
+
+.readiness-pill,
+.confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 0 14px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.readiness-pill.apply-now,
+.confidence-badge.ready {
+  background: #e9fbf3;
+  color: #087b55;
+}
+
+.readiness-pill.customize-first,
+.confidence-badge.review {
+  background: #fff5df;
+  color: #9a5a00;
+}
+
+.readiness-pill.hold,
+.confidence-badge.missing {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.agent-score-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.priority-score {
+  display: grid;
+  place-items: center;
+  width: 120px;
+  height: 120px;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #10233f, #3478f6);
+  color: #ffffff;
+  text-align: center;
+}
+
+.priority-score span {
+  font-size: 3rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.08em;
+}
+
+.priority-score small {
+  max-width: 80px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.agent-score-row strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #14213d;
+  font-size: 1.35rem;
+}
+
+.agent-score-row > div:last-child {
+  min-width: 0;
+}
+
+.agent-score-row p {
+  margin-bottom: 0;
+  color: #526983;
+  overflow-wrap: anywhere;
+}
+
+.agent-copy-button {
+  min-width: 116px;
+}
+
+.agent-step-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.agent-step-list li {
+  padding-left: 4px;
+  color: #405775;
+}
+
+.agent-step-list strong {
+  color: #14213d;
+}
+
+.agent-step-list p {
+  margin: 4px 0;
+}
+
+.agent-step-list span {
+  color: #245ba8;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.profile-field-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.profile-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid #dbe7f7;
+  border-radius: 18px;
+  padding: 14px;
+  background: #f8fbff;
+}
+
+.profile-field span {
+  color: #6381a3;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.profile-field strong {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #14213d;
+}
+
+.draft-card {
+  display: flex;
+  min-height: 420px;
+  flex-direction: column;
+}
+
+.draft-card label {
+  display: grid;
+  gap: 8px;
+  color: #6381a3;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.draft-card label + label {
+  margin-top: 16px;
+}
+
+.draft-card textarea {
+  min-height: 280px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.draft-card label textarea {
+  min-height: 150px;
+  text-transform: none;
+}
+
 .keyword-panel .panel-heading span {
   display: grid;
   place-items: center;
@@ -494,7 +674,8 @@ textarea:focus {
   .hero-section,
   .input-grid,
   .keyword-grid,
-  .dashboard-grid {
+  .dashboard-grid,
+  .application-agent {
     grid-template-columns: 1fr;
   }
 
@@ -538,6 +719,14 @@ textarea:focus {
 
   textarea {
     min-height: 260px;
+  }
+
+  .agent-score-row {
+    grid-template-columns: 1fr;
+  }
+
+  .priority-score {
+    width: 100%;
   }
 
   .rewrite-card textarea {
